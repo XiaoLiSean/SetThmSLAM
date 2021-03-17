@@ -1,0 +1,16 @@
+classdef ParkingValet < handle
+    properties
+        pr; % parameters defined at params.m
+        vehicleSim;
+        costmap;
+        motionPlanner;
+        behavioralPlanner;
+        pathAnalyzer;
+        lonController;
+    end
+    methods
+        function obj = ParkingValet()
+            costmap     = generateParkingSpaceMap(fig_label)
+        end
+    end
+end
