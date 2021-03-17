@@ -17,24 +17,27 @@ classdef ParkingValet < handle
             obj.pr          = params;
             obj.lib         = demoEssentials;
             obj.vehicleDim  = obj.pr.carDims;
-            obj.costmap             = generateParkingSpaceMap(1); % Generate and Visualize Parking Space with Cameras
+            obj.costmap             = obj.generateParkingSpaceCostmap(); % Generate and Visualize Parking Space with Cameras
             obj.vehicleSim          = HelperVehicleSimulator(obj.costmap, obj.vehicleDim);
-            obj.motionPlanner       = pathPlannerRRT(obj.costmap, 'MinIterations', 1000,...
-                                      'ConnectionDistance', 10, 'MinTurningRadius', obj.pr.MinTurningRadius);
+            obj.vehicleSim.setVehiclePose(obj.pr.p_0')
+            obj.vehicleSim.setVehicleVelocity(0.0)
+            obj.showCameras()
+            obj.motionPlanner       = pathPlannerRRT(obj.costmap);
             obj.behavioralPlanner   = HelperBehavioralPlanner(obj.pr.routePlan, obj.pr.maxSteeringAngle);
             obj.lonController       = HelperLongitudinalController('SampleTime', obj.pr.sampleTime);
         end
         
         %% Derived from Parking Valet Example
         function simulation(obj)
-            currentPose     = obj.pr.p_0'; % Input to planner should be a row vector
-            currentVel      = 0;
+            currentPose     = obj.vehicleSim.getVehiclePose(); % Input to planner should be a row vector
+            currentVel      = obj.vehicleSim.getVehicleVelocity();
             while ~reachedDestination(obj.behavioralPlanner)
                 
                 % Request next maneuver from behavioral layer
                 [nextGoal, plannerConfig, speedConfig] = requestManeuver(obj.behavioralPlanner, currentPose, currentVel);
                 
                 % Configure the motion planner
+                plannerConfig.MinTurningRadius  = obj.pr.MinTurningRadius;
                 obj.lib.configurePlanner(obj.motionPlanner, plannerConfig);
                 
                 % Plan a reference path using RRT* planner to the next goal pose
@@ -82,7 +85,7 @@ classdef ParkingValet < handle
                     
                     % Compute steering command
                     steeringAngle   = lateralControllerStanley(refPose, currentPose, currentVel, ...
-                                      'Direction', direction, 'Wheelbase', obj.vehicleDim.Wheelbase);
+                        'Direction', direction, 'Wheelbase', obj.vehicleDim.Wheelbase);
                     
                     % Compute acceleration and deceleration commands
                     obj.lonController.Direction     = direction;
@@ -102,9 +105,44 @@ classdef ParkingValet < handle
                     currentPose  = getVehiclePose(obj.vehicleSim);
                     currentVel   = getVehicleVelocity(obj.vehicleSim);
                 end
-            end 
+            end
             % Show vehicle simulation figure
             showFigure(obj.vehicleSim);
+        end
+        
+        %% Parking Space Map: Build up binary array representation for parking space
+        function costmap = generateParkingSpaceCostmap(obj) 
+            mapLayers   = generateParkingLots(obj.pr.carDims, obj.pr.SpaceDim, obj.pr.numLotsPerRow,...
+                                              obj.pr.occupiedLots, obj.pr.lotSize, obj.pr.ratioMeter2Pixel);
+            resolution  = obj.pr.SpaceDim(1)/size(mapLayers.StationaryObstacles, 2); % resolution of the occupancy grids in meter
+            costmap     = obj.lib.combineMapLayers(mapLayers, resolution);
+            ccConfig    = inflationCollisionChecker(obj.vehicleDim, obj.pr.numCircles);
+            costmap.CollisionChecker    = ccConfig;
+        end
+        
+        %% Visualize cameras and their FoV
+        function showCameras(obj)
+            plot(obj.costmap, 'Inflation', 'off'); hold on;
+            for i = 1:obj.pr.m
+                patch   = obj.get_wedge_patch(i);
+                fill(patch(1,:), patch(2,:), 'red', 'FaceAlpha', 0.05, 'EdgeAlpha', 0.0);
+                plot(obj.pr.l_hat(1,i), obj.pr.l_hat(2,i), 'rx', 'MarkerSize', 10, 'LineWidth', 2); hold on;
+                offset  = (-1)^(obj.pr.l_hat(2,i) < obj.pr.SpaceDim(2))*2;
+                text(obj.pr.l_hat(1,i), obj.pr.l_hat(2,i)+offset, num2str(i), 'Color', 'Red', 'FontSize', 20)
+            end
+        end
+        
+        function patch = get_wedge_patch(obj, i)
+            [x,y,theta,FoV,r] = deal(obj.pr.l_hat(1,i), obj.pr.l_hat(2,i), obj.pr.l_hat(3,i), obj.pr.FoV, obj.pr.Measurable_R);
+            theta_l     = theta - 0.5*FoV;
+            theta_u     = theta + 0.5*FoV;
+            thetas      = theta_l:pi/180:theta_u;
+            patch       = [x;y];
+            
+            for t = thetas
+                point   = [x+r*cos(t); y+r*sin(t)];
+                patch   = [patch, point];
+            end
         end
     end
 end

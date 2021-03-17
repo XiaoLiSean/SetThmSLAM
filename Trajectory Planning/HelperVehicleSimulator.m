@@ -298,7 +298,7 @@ classdef HelperVehicleSimulator < handle
             obj.Vehicle.setControlCommand([accelCmd, decelCmd, steerCmd]);
         end
         
-        %------------------------------------------------------------------
+        %------------------------------------------------------------------        
         function hideFigure(obj)
            
             set(obj.Figure, 'Visible', 'off');
