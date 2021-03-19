@@ -29,7 +29,7 @@ classdef params
         carDims     = vehicleDimensions(params.carLength, params.carWidth,...
                                         params.carHeight, 'FrontOverhang', params.FrontOverhang,...
                                         'RearOverhang', params.RearOverhang);
-        p_0         = [10; 5; 0]; % RC car initial state vector [x,y,theta(deg)] defined at the center of rear wheel axis
+        p_0         = [10; 5; 0]; % RC car initial state vector [x,y,theta] defined at the center of rear wheel axis
         maxSteeringAngle    = 35; % in degrees
         Wheelbase           = params.carLength - params.RearOverhang - params.FrontOverhang;
         MinTurningRadius    = params.Wheelbase/tan(params.maxSteeringAngle*pi/180); % in meters
@@ -63,26 +63,19 @@ classdef params
         P; % Markers' position: P{i} in 2D
     end
     methods
-        function obj = params()
+        function obj = Params(obj)
+            obj.Omega   = interval([0; 0], params.SpaceDim'); % parking space Set Omega in CORA
             obj.n       = size(obj.p_hat_rel, 2);
             obj.p_hat   = 0.0*obj.p_hat_rel;
-            theta       = deg2rad(obj.p_0(3));
             for i = 1:obj.n
-                obj.p_hat(1,i)  = obj.p_0(1) + obj.p_hat_rel(1,i)*cos(theta) - obj.p_hat_rel(2,i)*sin(theta);
-                obj.p_hat(2,i)  = obj.p_0(2) + obj.p_hat_rel(1,i)*sin(theta) + obj.p_hat_rel(2,i)*cos(theta);
+                obj.p_hat(1,i)  = obj.p_0(1) + obj.p_hat_rel(i,1)*cos(obj.p_0(3)) - obj.p_hat_rel(i,2)*sin(obj.p_0(3));
+                obj.p_hat(2,i)  = obj.p_0(2) + obj.p_hat_rel(i,1)*sin(obj.p_0(3)) + obj.p_hat_rel(i,2)*cos(obj.p_0(3));
                 obj.P{i}        = interval([obj.p_hat(1,i)-obj.epsilon_P; obj.p_hat(2,i)-obj.epsilon_P],...
                                            [obj.p_hat(1,i)+obj.epsilon_P; obj.p_hat(2,i)+obj.epsilon_P]);
-            end
-            for i = 1:obj.m
                 obj.Lxy{i}      = interval([obj.l_hat(1,i)-obj.epsilon_Lxy; obj.l_hat(2,i)-obj.epsilon_Lxy],...
                                            [obj.l_hat(1,i)+obj.epsilon_Lxy; obj.l_hat(2,i)+obj.epsilon_Lxy]);
-                obj.Lt{i}       = interval(obj.l_hat(3,i)-obj.epsilon_Lt, obj.l_hat(3,i)+obj.epsilon_Lt);
+                obj.Lt{i}       = interval(obj.l_hat(3,i)-obj.epsilon_Lxy);
             end
-            % Entire parking space is constructed to bound all the initial
-            % and future uncertainty set
-            LeftBottom  = [min([min(obj.l_hat(1,:)) - obj.epsilon_Lxy, 0.0]); min([min(obj.l_hat(2,:)) - obj.epsilon_Lxy, 0.0])];
-            RightTop    = [max([max(obj.l_hat(1,:)) + obj.epsilon_Lxy, obj.SpaceDim(1)]); max([max(obj.l_hat(2,:)) + obj.epsilon_Lxy, obj.SpaceDim(2)])];
-            obj.Omega   = interval(LeftBottom, RightTop); 
         end
     end
 end
