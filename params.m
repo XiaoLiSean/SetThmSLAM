@@ -19,6 +19,7 @@ classdef params
         sampleTime  = 0.05; % simulation sample time in second k-->k+1
         m           = size(params.l_hat, 2); % Numbers of total cameras
         Measurable_R    = 20; % Markers within Measurable_R are measurable
+        e_v         = deg2rad(1); % measurement noise bound in rad
         
         %% Ego RC car parameters (refer to vehicleDimensions in MATLAB Doc.)
         carLength   = 4.0; % car length in meters
@@ -44,11 +45,11 @@ classdef params
         Attributes  = repmat([params.attrib], size(params.StartPose,1), 1)
         routePlan   = table(params.StartPose, params.EndPose, params.Attributes,...
                             'VariableNames', {'StartPose', 'EndPose', 'Attributes'});
-        approxSeparation = 0.1; % Specify number of poses to return using a separation of approximately 0.1 m
+        approxSeparation    = 0.1; % Specify number of poses to return using a separation of approximately 0.1 m
         
         %% Constant used in initializing Uncertainty Set
         p_hat_rel   = [0,-0.5*params.carWidth; 0,0.5*params.carWidth; 0.5*params.carLength,0]'; % initial markers' position in ego car's frame: p_hat_rel(:,i) = [x;y]
-        epsilon_Lt  = 1; % in rad
+        epsilon_Lt  = deg2rad(5); % in rad
         epsilon_Lxy = 1; % in meter
         epsilon_P   = 0.5; % in meter
         

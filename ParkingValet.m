@@ -58,6 +58,10 @@ classdef ParkingValet < handle
                     currentPose  = getVehiclePose(obj.vehicleSim);
                     currentVel   = getVehicleVelocity(obj.vehicleSim);
                     obj.SetSLAM.updateNominalStates(currentPose)
+                    obj.SetSLAM.updateMeasurements()
+                    obj.SetSLAM.matching()
+                    obj.SetSLAM.propagateSets()
+                    obj.SetSLAM.updateSets()
                     obj.SetSLAM.drawSets()
                     % =====================================================
                     % Check if the vehicle reaches the goal
@@ -147,10 +151,12 @@ classdef ParkingValet < handle
             ylim([obj.pr.Omega.inf(2) obj.pr.Omega.sup(2)]);
             for i = 1:obj.pr.m
                 patch   = obj.get_wedge_patch(i);
-                fill(patch(1,:), patch(2,:), 'red', 'FaceAlpha', 0.05, 'EdgeAlpha', 0.0);
+                fill(patch(1,:), patch(2,:), 'red', 'FaceAlpha', 0.02, 'EdgeAlpha', 0.03);
                 plot(obj.pr.l_hat(1,i), obj.pr.l_hat(2,i), 'rx', 'MarkerSize', 10, 'LineWidth', 2); hold on;
                 offset  = (-1)^(obj.pr.l_hat(2,i) < obj.pr.SpaceDim(2))*2;
                 text(obj.pr.l_hat(1,i), obj.pr.l_hat(2,i)+offset, num2str(i), 'Color', 'Red', 'FontSize', 20)
+                plot([obj.pr.l_hat(1,i), obj.pr.l_hat(1,i)+obj.pr.Measurable_R*cos(obj.pr.l_hat(3,i))],...
+                     [obj.pr.l_hat(2,i), obj.pr.l_hat(2,i)+obj.pr.Measurable_R*sin(obj.pr.l_hat(3,i))], 'r--');
             end
         end
         
