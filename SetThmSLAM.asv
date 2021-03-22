@@ -228,35 +228,35 @@ classdef SetThmSLAM < handle
         
         %% Convex approximation of local sets P_M and L_M in camera and marker frame
         function LM = getConvLM(obj, i, q)
-            LM          = mptPolytope(-obj.getVertices(i,q));
-        end
-        
-        function PM = getConvPM(obj, i, q)
-            PM          = mptPolytope(obj.getVertices(i,q));
-        end
-        
-        function vertices = getVertices(obj, i, q)
             alpha       = obj.Ma{i}(q);
             t_lower     = alpha - obj.e_va + obj.Lt{i}.inf;
             t_upper     = alpha + obj.e_va + obj.Lt{i}.sup;
-            mid_t       = t_lower + (t_upper - t_lower)/2.0; % Angle bisector line
+            mid_t       = t_lower + (t_upper - t_lower)/2.0; % Angle of bisector line
             mid_r       = obj.Measurable_R / cos((t_upper - t_lower)/2.0);
             if obj.isStereoVision
                 range       = obj.Mr{i}(q);
                 r_lower     = max([range - obj.e_vr, 0.0]);
                 r_upper     = min([range + obj.e_vr, obj.Measurable_R]);
                 r_bound     = r_upper / cos((t_upper - t_lower)/2.0);
-                vertices    = [r_lower*cos(t_lower), r_lower*sin(t_lower);
-                               r_lower*cos(mid_t), r_lower*sin(mid_t);
-                               r_lower*cos(t_upper), r_lower*sin(t_upper);
-                               r_upper*cos(t_lower), r_upper*sin(t_lower);
-                               r_bound*cos(mid_t), r_bound*sin(mid_t);
-                               r_upper*cos(t_upper), r_upper*sin(t_upper)];
+                vertices    = [-r_lower*cos(t_lower), -r_lower*sin(t_lower);
+                               -r_lower*cos(mid_t), -r_lower*sin(mid_t);
+                               -r_lower*cos(t_upper), -r_lower*sin(t_upper);
+                               -r_upper*cos(t_lower), -r_upper*sin(t_lower);
+                               -r_bound*cos(mid_t), -r_bound*sin(mid_t);
+                               -r_upper*cos(t_upper), -r_upper*sin(t_upper)];
             else
-                vertices    = [0, obj.Measurable_R*cos(t_lower), obj.Measurable_R*cos(t_upper), mid_r*cos(mid_t);...
-                               0, obj.Measurable_R*sin(t_lower), obj.Measurable_R*sin(t_upper), mid_r*sin(mid_t)]';
+                vertices    = [0, -obj.Measurable_R*cos(t_lower), -obj.Measurable_R*cos(t_upper), -mid_r*cos(mid_t);...
+                               0, -obj.Measurable_R*sin(t_lower), -obj.Measurable_R*sin(t_upper), -mid_r*sin(mid_t)]';
             end
+            LM          = mptPolytope(vertices);
         end
+        
+        function PM = getConvPM(obj, i, q)
+
+            PM          = mptPolytope(vertices);
+        end
+        
+        function vertices = getVertices(obj, i, q)
         
         %% Function to obtain arr of marker indexes which can be updated with M{i}
         function markers = getUpdateableArr(obj, i)

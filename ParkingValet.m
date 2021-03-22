@@ -13,7 +13,7 @@ classdef ParkingValet < handle
     end
     methods
         %% Initialization
-        function obj = ParkingValet()
+        function obj = ParkingValet(cameraType)
             addpath('./Trajectory Planning')
             obj.pr          = params;
             obj.lib         = demoEssentials;
@@ -26,7 +26,7 @@ classdef ParkingValet < handle
             obj.motionPlanner       = pathPlannerRRT(obj.costmap);
             obj.behavioralPlanner   = HelperBehavioralPlanner(obj.pr.routePlan, obj.pr.maxSteeringAngle);
             obj.lonController       = HelperLongitudinalController('SampleTime', obj.pr.sampleTime);
-            obj.SetSLAM     = SetThmSLAM(obj.pr);
+            obj.SetSLAM     = SetThmSLAM(obj.pr, cameraType);
         end
         
         %% Derived from Parking Valet Example
@@ -125,7 +125,7 @@ classdef ParkingValet < handle
             startSpeed      = 0; % in meters/second
             endSpeed        = 0; % in meters/second
             refVelocities   = helperGenerateVelocityProfile(directions, cumLengths, curvatures, startSpeed, endSpeed, obj.pr.maxSpeed);
-            
+
             % Configure path analyzer
             obj.pathAnalyzer = HelperPathAnalyzer(refPoses, refVelocities, directions, 'Wheelbase', obj.vehicleDim.Wheelbase);
             
@@ -151,12 +151,12 @@ classdef ParkingValet < handle
             ylim([obj.pr.Omega.inf(2) obj.pr.Omega.sup(2)]);
             for i = 1:obj.pr.m
                 patch   = obj.get_wedge_patch(i);
-                fill(patch(1,:), patch(2,:), 'red', 'FaceAlpha', 0.02, 'EdgeAlpha', 0.03);
+                fill(patch(1,:), patch(2,:), 'red', 'FaceAlpha', 0.02, 'EdgeAlpha', 0.05);
                 plot(obj.pr.l_hat(1,i), obj.pr.l_hat(2,i), 'rx', 'MarkerSize', 10, 'LineWidth', 2); hold on;
                 offset  = (-1)^(obj.pr.l_hat(2,i) < obj.pr.SpaceDim(2))*2;
                 text(obj.pr.l_hat(1,i), obj.pr.l_hat(2,i)+offset, num2str(i), 'Color', 'Red', 'FontSize', 20)
-                plot([obj.pr.l_hat(1,i), obj.pr.l_hat(1,i)+obj.pr.Measurable_R*cos(obj.pr.l_hat(3,i))],...
-                     [obj.pr.l_hat(2,i), obj.pr.l_hat(2,i)+obj.pr.Measurable_R*sin(obj.pr.l_hat(3,i))], 'r--');
+                plot([obj.pr.l_hat(1,i), obj.pr.l_hat(1,i)+0.25*obj.pr.Measurable_R*cos(obj.pr.l_hat(3,i))],...
+                     [obj.pr.l_hat(2,i), obj.pr.l_hat(2,i)+0.25*obj.pr.Measurable_R*sin(obj.pr.l_hat(3,i))], 'r--');
             end
         end
         
