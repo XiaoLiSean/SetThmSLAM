@@ -18,9 +18,9 @@ classdef params
                    15, 10, -pi/2; 30, 10, -pi/2; 47, 10, pi; 47, 20, pi; 32, 15, 0;
                    0, 32, -55*pi/180; 10, 32, -7*pi/18; 22.5, 32, -pi/2; 35, 32, -11*pi/18; 45, 32, -125*pi/180;
                    15, 20, pi/2; 30, 20, pi/2; -2, 10, 0; -2, 20, 0; 13, 15, -pi;]'; % Camera Nominal State [x (m);y (m);theta (rad)]
-        sampleTime  = 0.05; % controller signal interval
-        updateTime  = 1; % measurement update interval (k --> k+1)
-        m           = size(params.l_hat, 2); % Numbers of total cameras
+        ctrlSampleTime  = 0.05; % controller signal interval (u{k} --> u{k+1})
+        updateTime      = 1; % measurement update interval (M{k} --> M{k+1})
+        m               = size(params.l_hat, 2); % Numbers of total cameras
         Measurable_R    = 20; % Markers within Measurable_R are measurable
         e_va        = deg2rad(1); % angle measurement noise bound in rad
         e_vr        = 0.5; % range measurement noise bound in rad
@@ -54,7 +54,7 @@ classdef params
         %% Constant used in initializing Uncertainty Set
         p_hat_rel   = [0,-0.5*params.carWidth; 0,0.5*params.carWidth; 0.5*params.carLength,0]'; % initial markers' position in ego car's frame: p_hat_rel(:,i) = [x;y]
         epsilon_Lt  = deg2rad(1); % in rad
-        epsilon_Lxy = 0.1; % in meter
+        epsilon_Lxy = 0.2; % in meter
         epsilon_P   = 5; % in meter
         dVFractionThreshold     = 0.01; % used to determine the termination of set update
         

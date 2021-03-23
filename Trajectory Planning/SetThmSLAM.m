@@ -1,5 +1,6 @@
 classdef SetThmSLAM < handle
     properties
+        SetUpdateTimer;
         n; % number of markers
         m; % number of cameras
         lxy_hat; % Nominal camera position
@@ -43,7 +44,7 @@ classdef SetThmSLAM < handle
     end
     
     methods
-        function obj = SetThmSLAM(pr, cameraType)
+        function obj = SetThmSLAM(pr, cameraType, TimeStep)
             if strcmp(cameraType,'stereo')
                 obj.isStereoVision  = true;
                 obj.e_vr            = pr.e_vr;
@@ -66,16 +67,25 @@ classdef SetThmSLAM < handle
             obj.Omega   = mptPolytope(pr.Omega);
             obj.Lt      = pr.Lt;
             obj.e_va    = pr.e_va;
-            obj.e_w     = pr.maxSpeed*pr.sampleTime*[1;1];
+            obj.e_w     = pr.maxSpeed*TimeStep*[1;1];
             obj.FoV     = pr.FoV;
             obj.Measurable_R    = pr.Measurable_R;
             obj.dVFractionThreshold     = pr.dVFractionThreshold;
             obj.updatePrevVolume();
+            % =====================================================
+            % Set Membership localization main
+            % =====================================================
+            % Note: SetUpdateTimer called to update the sets and plotting
+            % every updateTime sec;
+            obj.SetUpdateTimer  = HelperTimer(pr.updateTime, @obj.MeasurementAndUpdate);
+            % =====================================================
         end
         
         %% main function used to be called every updateTime period to update sets
-        function SetThmSLAMLoop(obj)
-            
+        function MeasurementAndUpdate(obj, ~, ~)
+            obj.updateMeasurements()
+            obj.matching()
+            obj.updateSets()
         end
         
         %% Matching: data association
@@ -357,6 +367,15 @@ classdef SetThmSLAM < handle
             for i = 1:obj.m
                 delete(obj.h_Lxy{i})
                 delete(obj.h_Lt{i})
+            end
+        end
+        
+        %% Delete class method
+        function delete(obj)
+            %delete Delete simulator object            
+            if ~isempty(obj.SetUpdateTimer) && isvalid(obj.SetUpdateTimer)
+                obj.SetUpdateTimer.Timer.stop;
+                delete(obj.SetUpdateTimer);
             end
         end
     end

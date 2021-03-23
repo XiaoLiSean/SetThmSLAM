@@ -32,15 +32,21 @@
 
 % Copyright 2017-2018 The MathWorks, Inc.
 classdef HelperVehicleSimulator < handle
+    %% Set SLAM object for car localization and mapping by Xiao
+    % =====================================================================
+    properties
+        SetSLAM;
+    end
+    % =====================================================================
     
+    %% Other properties
     properties(Constant, Access = protected)
         %Step Integration step size (in seconds)
         Step = 0.01
-        
         %PlotInterval Interval between plot updates (in seconds)
         %   The exact plot interval is also affected by MATLAB callback
         %   queue.
-        PlotInterval = 0.2
+        PlotInterval = 0.5 % default 0.2 sec
         
         %FigureName Name of simulation figure window
         FigureName = 'Automated Valet Parking'
@@ -119,7 +125,7 @@ classdef HelperVehicleSimulator < handle
     %----------------------------------------------------------------------
     methods
         %------------------------------------------------------------------
-        function obj = HelperVehicleSimulator(costmap, vehicleDims)
+        function obj = HelperVehicleSimulator(costmap, vehicleDims, params, cameraType)
             
             % Initialize trajectory buffer
             obj.TrajectoryBuffer = NaN(obj.TrajectoryBufferCapacity,3);
@@ -139,6 +145,14 @@ classdef HelperVehicleSimulator < handle
             
             obj.PlotTimer = HelperTimer(obj.PlotInterval, ...
                 @obj.updatePlot);
+            
+            % =============================================================
+            % Set Membership localization main
+            % =====================================================
+            % Note: SetUpdateTimer is defined in SetSLAM to call SetThmSLAMLoop
+            % every updateTime sec to update the sets and plotting
+            obj.SetSLAM     = SetThmSLAM(params, cameraType, obj.Step);
+            % =============================================================
         end
         
         %------------------------------------------------------------------
@@ -341,6 +355,13 @@ classdef HelperVehicleSimulator < handle
             
             obj.Vehicle.updateKinematics(obj.Step);
             obj.updateTrajectoryBuffer(obj.getVehiclePose());
+            
+            % =============================================================
+            % Update the uncertainty sets by Xiao
+            % =============================================================
+            obj.SetSLAM.updateNominalStates(obj.getVehiclePose())
+            obj.SetSLAM.propagateSets()
+            % =============================================================
         end
         
         %------------------------------------------------------------------
@@ -374,6 +395,13 @@ classdef HelperVehicleSimulator < handle
             if obj.PlotTrajectory
                 obj.plotTrajectory();
             end
+            
+            % =============================================================
+            % plot uncertainty sets and marker position
+            % =============================================================
+            obj.SetSLAM.eraseDrawing();
+            obj.SetSLAM.drawSets();
+            % =============================================================
             
             drawnow('limitrate');
         end

@@ -25,8 +25,7 @@ classdef ParkingValet < handle
             % states as well as the uncertainty sets in SetSLAM properties;
             % another to plot the new updated vehicle and the sets;
             % Meanwhile, the uncertainty set updating is processed in
-            % SetThmSLAM initialized in HelperKinematicVehicle and stored
-            % in vehicleSim to be excuted every updateTime sec
+            % SetThmS
             obj.vehicleSim          = HelperVehicleSimulator(obj.costmap, obj.vehicleDim, obj.pr, cameraType);
             obj.vehicleSim.setVehiclePose(obj.pr.p_0')
             obj.vehicleSim.setVehicleVelocity(0.0)
