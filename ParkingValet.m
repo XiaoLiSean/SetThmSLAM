@@ -19,6 +19,10 @@ classdef ParkingValet < handle
             obj.lib         = demoEssentials;
             obj.vehicleDim  = obj.pr.carDims;
             obj.costmap             = obj.generateParkingSpaceCostmap(); % Generate and Visualize Parking Space with Cameras
+            % Note: HelperVehicleSimulator will initialize two seperate
+            % threads every 0.01 sec (defined as obj.Step): one in 
+            % HelperKinematicVehicle.updateKinematics to update the vehicle
+            % states; another to plot the new updated vehicle
             obj.vehicleSim          = HelperVehicleSimulator(obj.costmap, obj.vehicleDim);
             obj.vehicleSim.setVehiclePose(obj.pr.p_0')
             obj.vehicleSim.setVehicleVelocity(0.0)
@@ -49,14 +53,15 @@ classdef ParkingValet < handle
                     % =====================================================
                     % Simulate the vehicle using the controller outputs
                     % =====================================================
-                    obj.SetSLAM.eraseDrawing()
-                    drive(obj.vehicleSim, accelCmd, decelCmd, steeringAngle);
+                    % Note: this drive code only used to update the control
+                    % command based on current pose and vel; the vehicle
+                    % states and plotting is parallelly processed in
+                    % another two threads initialized in HelperVehicleSimulator
+                    drive(obj.vehicleSim, accelCmd, decelCmd, steeringAngle); 
                     % =====================================================
                     % Set Membership localization main
                     % =====================================================
-                    % Get current pose and velocity of the vehicle
-                    currentPose  = getVehiclePose(obj.vehicleSim);
-                    currentVel   = getVehicleVelocity(obj.vehicleSim);
+                    obj.SetSLAM.eraseDrawing()
                     obj.SetSLAM.updateNominalStates(currentPose)
                     obj.SetSLAM.updateMeasurements()
                     obj.SetSLAM.matching()
@@ -69,6 +74,9 @@ classdef ParkingValet < handle
                     % Wait for fixed-rate execution
                     controlRate = HelperFixedRate(1/obj.pr.sampleTime);
                     waitfor(controlRate);
+                    % Get current pose and velocity of the vehicle
+                    currentPose  = getVehiclePose(obj.vehicleSim);
+                    currentVel   = getVehicleVelocity(obj.vehicleSim);
                 end
             end
             % Show vehicle simulation figure
