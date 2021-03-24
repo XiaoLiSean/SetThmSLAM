@@ -41,6 +41,8 @@ classdef SetThmSLAM < handle
         P_Vol_pre; % volume of P{i} before set update
         Lxy_Vol_pre; % volume of Lxy{i} before set update
         Lt_Vol_pre; % volume of Lt{i} before set update
+        
+        VolumeData; % history of markers sets volumes
     end
     
     methods
@@ -72,6 +74,7 @@ classdef SetThmSLAM < handle
             obj.Measurable_R    = pr.Measurable_R;
             obj.dVFractionThreshold     = pr.dVFractionThreshold;
             obj.updatePrevVolume();
+            obj.VolumeData      = [];
             % =====================================================
             % Set Membership localization main
             % =====================================================
@@ -104,6 +107,7 @@ classdef SetThmSLAM < handle
                 obj.P{i}    = plus(obj.P{i}, mtimes(diag(obj.e_w), B_inf));
             end
             obj.updatePrevVolume();
+            obj.VolumeData  = [obj.VolumeData; obj.P_Vol_pre];
         end
         
         %% Set update by measurement (iterative algorithm)
@@ -262,7 +266,6 @@ classdef SetThmSLAM < handle
                 r_upper     = min([range + obj.e_vr, obj.Measurable_R]);
                 r_bound     = r_upper / cos((t_upper - t_lower)/2.0);
                 vertices    = [r_lower*cos(t_lower), r_lower*sin(t_lower);
-                               r_lower*cos(mid_t), r_lower*sin(mid_t);
                                r_lower*cos(t_upper), r_lower*sin(t_upper);
                                r_upper*cos(t_lower), r_upper*sin(t_lower);
                                r_bound*cos(mid_t), r_bound*sin(mid_t);
