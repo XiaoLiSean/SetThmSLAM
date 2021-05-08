@@ -9,32 +9,28 @@ classdef ParkingValet < handle
         behavioralPlanner;
         pathAnalyzer;
         lonController;
+        SetSLAM;
     end
     methods
         %% Initialization
         function obj = ParkingValet(cameraType)
-            addpath('./Trajectory Planning')
+            addpath('./util')
             obj.pr          = params;
             obj.lib         = demoEssentials;
             obj.vehicleDim  = obj.pr.carDims;
             obj.costmap             = obj.generateParkingSpaceCostmap(); % Generate and Visualize Parking Space with Cameras
-            % =====================================================
             % Note: HelperVehicleSimulator will initialize two seperate
-            % threads every 0.01/0.2 sec (defined as obj.Step/ obj.PlotInterval): 
-            % one in HelperKinematicVehicle.updateKinematics to update the vehicle
-            % states as well as the uncertainty sets in SetSLAM properties;
-            % another to plot the new updated vehicle and the sets;
-            % Meanwhile, the uncertainty set updating is processed in
-            % SetThmSLAM initialized in HelperKinematicVehicle and stored
-            % in vehicleSim to be excuted every updateTime sec
-            obj.vehicleSim          = HelperVehicleSimulator(obj.costmap, obj.vehicleDim, obj.pr, cameraType);
+            % threads every 0.01 sec (defined as obj.Step): one in 
+            % HelperKinematicVehicle.updateKinematics to update the vehicle
+            % states; another to plot the new updated vehicle
+            obj.vehicleSim          = HelperVehicleSimulator(obj.costmap, obj.vehicleDim);
             obj.vehicleSim.setVehiclePose(obj.pr.p_0')
             obj.vehicleSim.setVehicleVelocity(0.0)
-            % =====================================================
             obj.showCameras()
             obj.motionPlanner       = pathPlannerRRT(obj.costmap);
             obj.behavioralPlanner   = HelperBehavioralPlanner(obj.pr.routePlan, obj.pr.maxSteeringAngle);
-            obj.lonController       = HelperLongitudinalController('SampleTime', obj.pr.ctrlSampleTime);
+            obj.lonController       = HelperLongitudinalController('SampleTime', obj.pr.sampleTime);
+            obj.SetSLAM     = SetThmSLAM(obj.pr, cameraType);
         end
         
         %% Derived from Parking Valet Example
@@ -52,7 +48,7 @@ classdef ParkingValet < handle
                 
                 % Execute control loop
                 while ~reachGoal
-                    % Calculate control signal using stanley controller
+                    % Calculate control signal using stanley(steeringAngle) + pi(accelCmd, decelCmd) controller
                     [accelCmd, decelCmd, steeringAngle, direction] = obj.Controller(currentPose, currentVel);
                     % =====================================================
                     % Simulate the vehicle using the controller outputs
@@ -61,20 +57,30 @@ classdef ParkingValet < handle
                     % command based on current pose and vel; the vehicle
                     % states and plotting is parallelly processed in
                     % another two threads initialized in HelperVehicleSimulator
-                    drive(obj.vehicleSim, accelCmd, decelCmd, steeringAngle);                     
+                    obj.vehicleSim.drive(accelCmd, decelCmd, steeringAngle); 
+                    % =====================================================
+                    % Set Membership localization main
+                    % =====================================================
+                    obj.SetSLAM.eraseDrawing() 
+                    obj.SetSLAM.updateNominalStates(currentPose)
+                    obj.SetSLAM.updateMeasurements()
+                    obj.SetSLAM.matching()
+                    obj.SetSLAM.propagateSets()
+                    obj.SetSLAM.updateSets()
+                    obj.SetSLAM.drawSets()
                     % =====================================================
                     % Check if the vehicle reaches the goal
                     reachGoal = helperGoalChecker(nextGoal, currentPose, currentVel, speedConfig.EndSpeed, direction);
                     % Wait for fixed-rate execution
-                    controlRate = HelperFixedRate(1/obj.pr.ctrlSampleTime);
+                    controlRate = HelperFixedRate(1/obj.pr.sampleTime);
                     waitfor(controlRate);
                     % Get current pose and velocity of the vehicle
-                    currentPose  = obj.vehicleSim.getVehiclePose();
-                    currentVel   = obj.vehicleSim.getVehicleVelocity();
+                    currentPose  = getVehiclePose(obj.vehicleSim);
+                    currentVel   = getVehicleVelocity(obj.vehicleSim);
                 end
             end
             % Show vehicle simulation figure
-            showFigure(obj.vehicleSim);
+            obj.vehicleSim.showFigure();
         end
         
         function [accelCmd, decelCmd, steeringAngle, direction] = Controller(obj, currentPose, currentVel)

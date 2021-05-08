@@ -1,6 +1,5 @@
 classdef SetThmSLAM < handle
     properties
-        SetUpdateTimer;
         n; % number of markers
         m; % number of cameras
         lxy_hat; % Nominal camera position
@@ -41,12 +40,10 @@ classdef SetThmSLAM < handle
         P_Vol_pre; % volume of P{i} before set update
         Lxy_Vol_pre; % volume of Lxy{i} before set update
         Lt_Vol_pre; % volume of Lt{i} before set update
-        
-        VolumeData; % history of markers sets volumes
     end
     
     methods
-        function obj = SetThmSLAM(pr, cameraType, TimeStep)
+        function obj = SetThmSLAM(pr, cameraType)
             if strcmp(cameraType,'stereo')
                 obj.isStereoVision  = true;
                 obj.e_vr            = pr.e_vr;
@@ -69,26 +66,16 @@ classdef SetThmSLAM < handle
             obj.Omega   = mptPolytope(pr.Omega);
             obj.Lt      = pr.Lt;
             obj.e_va    = pr.e_va;
-            obj.e_w     = pr.maxSpeed*TimeStep*[1;1];
+            obj.e_w     = pr.maxSpeed*pr.sampleTime*[1;1];
             obj.FoV     = pr.FoV;
             obj.Measurable_R    = pr.Measurable_R;
             obj.dVFractionThreshold     = pr.dVFractionThreshold;
             obj.updatePrevVolume();
-            obj.VolumeData      = [];
-            % =====================================================
-            % Set Membership localization main
-            % =====================================================
-            % Note: SetUpdateTimer called to update the sets and plotting
-            % every updateTime sec;
-            obj.SetUpdateTimer  = HelperTimer(pr.updateTime, @obj.MeasurementAndUpdate);
-            % =====================================================
         end
         
         %% main function used to be called every updateTime period to update sets
-        function MeasurementAndUpdate(obj, ~, ~)
-            obj.updateMeasurements()
-            obj.matching()
-            obj.updateSets()
+        function SetThmSLAMLoop(obj)
+            
         end
         
         %% Matching: data association
@@ -107,7 +94,6 @@ classdef SetThmSLAM < handle
                 obj.P{i}    = plus(obj.P{i}, mtimes(diag(obj.e_w), B_inf));
             end
             obj.updatePrevVolume();
-            obj.VolumeData  = [obj.VolumeData; obj.P_Vol_pre];
         end
         
         %% Set update by measurement (iterative algorithm)
@@ -266,6 +252,7 @@ classdef SetThmSLAM < handle
                 r_upper     = min([range + obj.e_vr, obj.Measurable_R]);
                 r_bound     = r_upper / cos((t_upper - t_lower)/2.0);
                 vertices    = [r_lower*cos(t_lower), r_lower*sin(t_lower);
+                               r_lower*cos(mid_t), r_lower*sin(mid_t);
                                r_lower*cos(t_upper), r_lower*sin(t_upper);
                                r_upper*cos(t_lower), r_upper*sin(t_lower);
                                r_bound*cos(mid_t), r_bound*sin(mid_t);
@@ -370,15 +357,6 @@ classdef SetThmSLAM < handle
             for i = 1:obj.m
                 delete(obj.h_Lxy{i})
                 delete(obj.h_Lt{i})
-            end
-        end
-        
-        %% Delete class method
-        function delete(obj)
-            %delete Delete simulator object            
-            if ~isempty(obj.SetUpdateTimer) && isvalid(obj.SetUpdateTimer)
-                obj.SetUpdateTimer.Timer.stop;
-                delete(obj.SetUpdateTimer);
             end
         end
     end
