@@ -66,7 +66,7 @@ classdef SetThmSLAM < handle
             obj.Omega   = mptPolytope(pr.Omega);
             obj.Lt      = pr.Lt;
             obj.e_va    = pr.e_va;
-            obj.e_w     = pr.maxSpeed*pr.sampleTime*[1;1];
+            obj.e_w     = pr.maxSpeed*pr.propTime*[1;1];
             obj.FoV     = pr.FoV;
             obj.Measurable_R    = pr.Measurable_R;
             obj.dVFractionThreshold     = pr.dVFractionThreshold;

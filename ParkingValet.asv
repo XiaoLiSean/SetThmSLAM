@@ -63,8 +63,8 @@ classdef ParkingValet < handle
                     obj.vehicleSim.updateKinematics(obj.pr.propTime)
                     currentPose = obj.vehicleSim.getVehiclePose();
                     currentVel  = obj.vehicleSim.getVehicleVelocity();
-                    %obj.SetSLAM.updateNominalStates(currentPose)
-                    %obj.SetSLAM.propagateSets()
+                    obj.SetSLAM.updateNominalStates(currentPose)
+                    obj.SetSLAM.propagateSets()
                 end
                 % =====================================================
                 % Update Control Signal
@@ -76,9 +76,9 @@ classdef ParkingValet < handle
                 % =====================================================
                 % Measurement Update Sets
                 if mod(current_time, obj.pr.updateTime) < epsilon
-                    %obj.SetSLAM.updateMeasurements()
-                    %obj.SetSLAM.matching()
-                    %obj.SetSLAM.updateSets()
+                    obj.SetSLAM.updateMeasurements()
+                    obj.SetSLAM.matching()
+                    obj.SetSLAM.updateSets()
                 end
                 % =====================================================
                 % Update Plot

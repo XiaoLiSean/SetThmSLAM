@@ -33,15 +33,7 @@
 % Copyright 2017-2018 The MathWorks, Inc.
 classdef HelperVehicleSimulator < handle
     
-    properties(Constant, Access = protected)
-        %Step Integration step size (in seconds)
-        Step = 0.01
-        
-        %PlotInterval Interval between plot updates (in seconds)
-        %   The exact plot interval is also affected by MATLAB callback
-        %   queue.
-        PlotInterval = 0.2
-        
+    properties(Constant, Access = protected)        
         %FigureName Name of simulation figure window
         FigureName = 'Automated Valet Parking'
     end
@@ -57,17 +49,6 @@ classdef HelperVehicleSimulator < handle
     properties (Hidden)
         %Axes Handle to main plot axes
         Axes
-    end
-    
-    %----------------------------------------------------------------------
-    % Timers
-    %----------------------------------------------------------------------
-    properties (Access = private)
-        %KinematicsTimer Timer for kinematics integration
-        KinematicsTimer = timer.empty
-        
-        %PlotTimer Timer triggering plot updates
-        PlotTimer = timer.empty
     end
     
     %----------------------------------------------------------------------
@@ -132,13 +113,6 @@ classdef HelperVehicleSimulator < handle
             
             % Set up the figure
             obj.setupFigure(costmap);
-            
-            % Start the two timing loops
-            obj.KinematicsTimer = HelperTimer(obj.Step, ...
-                @obj.updateKinematics);
-            
-            obj.PlotTimer = HelperTimer(obj.PlotInterval, ...
-                @obj.updatePlot);
         end
         
         %------------------------------------------------------------------
@@ -159,18 +133,7 @@ classdef HelperVehicleSimulator < handle
         function delete(obj)
             %delete Delete simulator object
             %   Deletes the simulator, either on object destruction or when
-            %   the figure window is closed.
-            
-            if ~isempty(obj.KinematicsTimer) && isvalid(obj.KinematicsTimer)
-                obj.KinematicsTimer.Timer.stop;
-                delete(obj.KinematicsTimer);
-            end
-            
-            if ~isempty(obj.PlotTimer) && isvalid(obj.PlotTimer)
-                obj.PlotTimer.Timer.stop;
-                delete(obj.PlotTimer);
-            end
-            
+            %   the figure window is closed.            
             if ~isempty(obj.Figure)
                 delete(obj.Figure);
             end
@@ -298,6 +261,31 @@ classdef HelperVehicleSimulator < handle
             obj.Vehicle.setControlCommand([accelCmd, decelCmd, steerCmd]);
         end
         
+        %------------------------------------------------------------------
+        function updateKinematics(obj, timeStep)
+            %updateKinematicsUpdate The kinematic model of the vehicle
+            
+            obj.Vehicle.updateKinematics(timeStep);
+            obj.updateTrajectoryBuffer(obj.getVehiclePose());
+        end
+        
+        %------------------------------------------------------------------
+        function updatePlot(obj)
+            %updatePlot Update the figure window with current vehicle
+            
+            if ~isgraphics(obj.Axes)
+                return
+            end
+            
+            obj.plotVehicle();
+            
+            if obj.PlotTrajectory
+                obj.plotTrajectory();
+            end
+            
+            drawnow('limitrate');
+        end
+        
         %------------------------------------------------------------------        
         function hideFigure(obj)
            
@@ -334,15 +322,7 @@ classdef HelperVehicleSimulator < handle
             
             obj.plotVehicle();
         end
-        
-        %------------------------------------------------------------------
-        function updateKinematics(obj, ~, ~)
-            %updateKinematicsUpdate The kinematic model of the vehicle
-            
-            obj.Vehicle.updateKinematics(obj.Step);
-            obj.updateTrajectoryBuffer(obj.getVehiclePose());
-        end
-        
+                
         %------------------------------------------------------------------
         function updateTrajectoryBuffer(obj, pose)
             %updateTrajectoryBuffer Insert pose into trajectory buffer.
@@ -359,23 +339,6 @@ classdef HelperVehicleSimulator < handle
                 obj.TrajectoryIndex = mod(obj.TrajectoryIndex, obj.TrajectoryBufferCapacity) + 1;
                 obj.TrajectoryBuffer(obj.TrajectoryIndex,:) = pose;
             end
-        end
-        
-        %------------------------------------------------------------------
-        function updatePlot(obj, ~, ~)
-            %updatePlot Update the figure window with current vehicle
-            
-            if ~isgraphics(obj.Axes)
-                return
-            end
-            
-            obj.plotVehicle();
-            
-            if obj.PlotTrajectory
-                obj.plotTrajectory();
-            end
-            
-            drawnow('limitrate');
         end
         
         %------------------------------------------------------------------

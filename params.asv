@@ -24,11 +24,11 @@ classdef params
         e_vr        = 0.5; % range measurement noise bound in rad
         
         %% Simulation time sychronization and management
-        simLoopDt   = 0.01; % [sec] time step of each simulation loop (other time constant should be interger times of this)
+        simLoopDt   = 0.01; % tim
         propTime    = 0.01; % [sec] [0.01 default] dt of adjacent set propagation (k --> k+1) during kinametics update (should be the smallest among the four)
         sampleTime  = 0.05; % [sec] [0.05 default] pi longitudinal controller sample time for the integral
         updateTime  = 0.5; % [sec] dt of adjacent measurement set update (k --> k+1)
-        plotTime    = 0.2; % [sec] time interval to update plot
+        plotTime    = 1; % [sec] time interval to update plot
         
         %% Ego RC car parameters (refer to vehicleDimensions in MATLAB Doc.)
         carLength   = 4.0; % car length in meters
