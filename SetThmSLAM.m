@@ -73,11 +73,6 @@ classdef SetThmSLAM < handle
             obj.updatePrevVolume();
         end
         
-        %% main function used to be called every updateTime period to update sets
-        function SetThmSLAMLoop(obj)
-            
-        end
-        
         %% Matching: data association
         % remain to be developed, currently assign ground true A_hat as the
         % only unique matching solution for Au

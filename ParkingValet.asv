@@ -63,7 +63,6 @@ classdef ParkingValet < handle
                     obj.vehicleSim.updateKinematics(obj.pr.propTime)
                     currentPose = obj.vehicleSim.getVehiclePose();
                     currentVel  = obj.vehicleSim.getVehicleVelocity();
-                    obj.SetSLAM.updateNominalStates(currentPose)
                     obj.SetSLAM.propagateSets()
                 end
                 % =====================================================
@@ -76,6 +75,7 @@ classdef ParkingValet < handle
                 % =====================================================
                 % Measurement Update Sets
                 if mod(current_time, obj.pr.updateTime) < epsilon
+                    obj.SetSLAM.updateNominalStates(obj.vehicleSim.getVehiclePose())
                     obj.SetSLAM.updateMeasurements()
                     obj.SetSLAM.matching()
                     obj.SetSLAM.updateSets()
@@ -83,9 +83,10 @@ classdef ParkingValet < handle
                 % =====================================================
                 % Update Plot
                 if mod(current_time, obj.pr.plotTime) < epsilon
-                    %obj.SetSLAM.eraseDrawing()
+                    obj.SetSLAM.updateNominalStates(obj.vehicleSim.getVehiclePose())
+                    obj.SetSLAM.eraseDrawing()
+                    obj.SetSLAM.drawSets()
                     obj.vehicleSim.updatePlot()
-                    %obj.SetSLAM.drawSets()
                 end
                 % =====================================================
                 % Check if the sub-goal is reached

@@ -60,11 +60,10 @@ classdef ParkingValet < handle
                 % =====================================================
                 % Control Update of Vehicle states and sets
                 if mod(current_time, obj.pr.propTime) < epsilon
-                    obj.vehicleSim.updateKinematics(obj.pr.propTime)
+                    obj.vehicleSim.updateKinematics(obj.pr.propTime);
                     currentPose = obj.vehicleSim.getVehiclePose();
                     currentVel  = obj.vehicleSim.getVehicleVelocity();
-                    %obj.SetSLAM.updateNominalStates(currentPose)
-                    %obj.SetSLAM.propagateSets()
+                    obj.SetSLAM.propagateSets();
                 end
                 % =====================================================
                 % Update Control Signal
@@ -76,16 +75,18 @@ classdef ParkingValet < handle
                 % =====================================================
                 % Measurement Update Sets
                 if mod(current_time, obj.pr.updateTime) < epsilon
-                    %obj.SetSLAM.updateMeasurements()
-                    %obj.SetSLAM.matching()
-                    %obj.SetSLAM.updateSets()
+                    obj.SetSLAM.updateNominalStates(obj.vehicleSim.getVehiclePose());
+                    obj.SetSLAM.updateMeasurements();
+                    obj.SetSLAM.matching();
+                    obj.SetSLAM.updateSets();
                 end
                 % =====================================================
                 % Update Plot
                 if mod(current_time, obj.pr.plotTime) < epsilon
-                    %obj.SetSLAM.eraseDrawing()
-                    obj.vehicleSim.updatePlot()
-                    %obj.SetSLAM.drawSets()
+                    obj.SetSLAM.updateNominalStates(obj.vehicleSim.getVehiclePose());
+                    obj.SetSLAM.eraseDrawing();
+                    obj.SetSLAM.drawSets();
+                    obj.vehicleSim.updatePlot();
                 end
                 % =====================================================
                 % Check if the sub-goal is reached
