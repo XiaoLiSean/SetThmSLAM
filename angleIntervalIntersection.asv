@@ -1,0 +1,45 @@
+function C = angleIntervalIntersection(A, B)
+    % The input set A,B is either a subset of [0, 2*pi] or [-pi, pi]
+    % the output set C is a subset of [-pi, pi] or [0, 2*pi]
+    if A.isempty()
+        C   = A;
+        return
+    elseif B.isempty()
+        C   = B;
+        return
+    end
+    
+    % First convert intervals A,B to ranges of [-pi, pi]
+    A1  = intervalWrapToPi(A);
+    B1  = intervalWrapToPi(B);
+    candidate1  = getIntersection()
+    % Second convert intervals A,B to ranges of [0, 2*pi]
+    A2  = intervalWrapTo2Pi(A);
+    B2  = intervalWrapTo2Pi(B);
+    
+    % Choose the one with largest volume
+    if volume(candidate1) < volume(candidate2)
+        C   = candidate2;
+    else
+        C   = candidate1;
+    end
+    
+end
+
+function C = getIntersection(A,B)
+    if length(A) == 1
+        A{1}    = A;
+    end
+    if length(B) == 1
+        B{1}    = B;
+    end
+    C   = {};
+    for i = 1:length(A)
+        for j = 1:length(B)
+            candidate   = and(A{i}, B{j});
+            if ~candidate.isempty()
+                C{length(C)+1}  = candidate;
+            end
+        end
+    end
+end

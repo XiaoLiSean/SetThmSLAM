@@ -1,4 +1,4 @@
-function [betaMin, betaMax] = atan2OverConvPolygons(P_i, Lxy_i)
+function [betaInf, betaSup] = atan2OverConvPolygons(P_i, Lxy_i)
     % Input: two uncertainty sets
     % Output: interval range of atan2(py-ly, px-lx) 
     % where p = [px;py] in P_i, l=[lx;ly] in Lxy_i
@@ -13,6 +13,17 @@ function [betaMin, betaMax] = atan2OverConvPolygons(P_i, Lxy_i)
             values  = [values; value];
         end
     end
-    betaMin     = min(values);
-    betaMax     = max(values);
+    
+    % atan2 is dis-continuous when the range [betaInf, betaSup] cross point
+    % of value PI. In this case, we shall move the [betaInf, betaSup] to
+    % range of [0, 2*pi] instead of [-pi, pi]. Note: since the camera is
+    % installed outside the bounds. [betaInf, betaSup] has a volume smaller
+    % than pi as P_i, Lxy_i cannot intersect with each other
+    betaInf     = min(values);
+    betaSup     = max(values);
+    if betaSup - betaInf >= pi
+        values  = wrapTo2Pi(values);
+        betaInf = min(values);
+        betaSup = max(values);
+    end
 end

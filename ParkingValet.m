@@ -75,7 +75,7 @@ classdef ParkingValet < handle
                 % =====================================================
                 % Measurement Update Sets
                 if mod(current_time, obj.pr.updateTime) < epsilon
-                    obj.SetSLAM.updateNominalStates(obj.vehicleSim.getVehiclePose());
+                    obj.SetSLAM.updateNominalStates(currentPose);
                     obj.SetSLAM.updateMeasurements();
                     obj.SetSLAM.matching();
                     obj.SetSLAM.updateSets();
@@ -83,7 +83,7 @@ classdef ParkingValet < handle
                 % =====================================================
                 % Update Plot
                 if mod(current_time, obj.pr.plotTime) < epsilon
-                    obj.SetSLAM.updateNominalStates(obj.vehicleSim.getVehiclePose());
+                    obj.SetSLAM.updateNominalStates(currentPose);
                     obj.SetSLAM.eraseDrawing();
                     obj.SetSLAM.drawSets();
                     obj.vehicleSim.updatePlot();

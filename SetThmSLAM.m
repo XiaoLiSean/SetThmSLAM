@@ -127,18 +127,18 @@ classdef SetThmSLAM < handle
                     continue
                 end
                 % Loop through measurements for u'th matching solution
-                interval_CAP    = interval(-inf, inf); % intersection over a single possible matching u
+                interval_CAP    = interval(-pi, pi); % intersection over a single possible matching u
                 for q = 1:length(obj.Ma{i})
                     j   = find(obj.Au{i}{u}(q,:)); % q'th measurement associated with j'th marker;
-                    [betaMin, betaMax]  = atan2OverConvPolygons(obj.P{j}, obj.Lxy{i});
-                    lt_est_min      = betaMin - obj.Ma{i}(q) - obj.e_va;
-                    lt_est_max      = betaMax - obj.Ma{i}(q) + obj.e_va;
+                    [betaInf, betaSup]  = atan2OverConvPolygons(obj.P{j}, obj.Lxy{i});
+                    lt_est_min      = betaInf - obj.Ma{i}(q) - obj.e_va;
+                    lt_est_max      = betaSup - obj.Ma{i}(q) + obj.e_va;
                     new_interval    = interval(lt_est_min, lt_est_max);
-                    interval_CAP    = and(interval_CAP, new_interval);
+                    interval_CAP    = angleIntervalIntersection(interval_CAP, new_interval);
                 end
-                interval_CUP    = or(interval_CUP, interval_CAP);
+                interval_CUP    = angleIntervalUnion(interval_CUP, interval_CAP);
             end
-            obj.Lt{i}   = and(obj.Lt{i}, interval_CUP);
+            obj.Lt{i}   = angleIntervalIntersection(obj.Lt{i}, interval_CUP);
         end
 
         function update_ith_Lxy(obj, i)
@@ -295,6 +295,7 @@ classdef SetThmSLAM < handle
             obj.A_hat   = {};
             for i = 1:obj.m
                 obj.Ma{i}       = [];
+                obj.Mr{i}       = [];
                 obj.A_hat{i}    = [];
                 for j = 1:obj.n
                     [isMeasurable, alpha, range]    = obj.isMeasurable(obj.p_hat{j}, obj.lxy_hat{i}, obj.lt_hat{i});
