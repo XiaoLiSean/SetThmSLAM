@@ -9,7 +9,8 @@ classdef SetThmSLAM < handle
         p_car; % Nominal current vehicle states
         
         %% Uncertainty sets
-        Omega; % Parking space
+        Omega_L; % Entire parking space (including camera sets L)
+        Omega_P; % Entire parking space (including marker sets P)
         Lxy; % Camera position uncertainty set
         Lt; % Camera heading uncertainty set
         P; % marker position uncertainty set
@@ -40,10 +41,16 @@ classdef SetThmSLAM < handle
         P_Vol_pre; % volume of P{i} before set update
         Lxy_Vol_pre; % volume of Lxy{i} before set update
         Lt_Vol_pre; % volume of Lt{i} before set update
+        
+        %% Variables used to reconstruct vehicle states and sets
+        enableRigidBodyConstraints; % [boolean] enable set update from rigid body contraints
+        e_rb; % rigid body uncertainty in [meter]
+        constraintArr; % n*n cell stores interval bounds on the rigid body edge length
+        ringSecNum; % sector the constraint ring to parts as convex polygons
     end
     
     methods
-        function obj = SetThmSLAM(pr, cameraType)
+        function obj = SetThmSLAM(pr, cameraType, enableRigidBodyConstraints)
             if strcmp(cameraType,'stereo')
                 obj.isStereoVision  = true;
                 obj.e_vr            = pr.e_vr;
@@ -63,13 +70,20 @@ classdef SetThmSLAM < handle
                 obj.lt_hat{i}   = pr.l_hat(3,i);
                 obj.Lxy{i}      = mptPolytope(pr.Lxy{i});
             end
-            obj.Omega   = mptPolytope(pr.Omega);
+            obj.Omega_L = mptPolytope(pr.Omega_L);
+            obj.Omega_P = mptPolytope(pr.Omega_P);
             obj.Lt      = pr.Lt;
             obj.e_va    = pr.e_va;
             obj.e_w     = pr.maxSpeed*pr.propTime*[1;1];
             obj.FoV     = pr.FoV;
-            obj.Measurable_R    = pr.Measurable_R;
-            obj.dVFractionThreshold     = pr.dVFractionThreshold;
+            obj.Measurable_R                = pr.Measurable_R;
+            obj.dVFractionThreshold         = pr.dVFractionThreshold;
+            obj.enableRigidBodyConstraints  = enableRigidBodyConstraints;
+            if obj.enableRigidBodyConstraints
+                obj.e_rb            = pr.epsilon_rb;
+                obj.constraintArr   = obj.intiate_contraint();
+                obj.ringSecNum      = pr.ring_sector_num;
+            end
             obj.updatePrevVolume();
         end
         
@@ -104,6 +118,17 @@ classdef SetThmSLAM < handle
                     markers     = obj.getUpdateableArr(i);
                     for idx = 1:length(markers)
                         obj.update_jth_P_by_Mi(i, markers(idx))
+                    end
+                end
+                % set update from rigid body contraints
+                if obj.enableRigidBodyConstraints
+                    for i = 1:obj.n
+                        for j = 1:obj.n
+                            if i == j
+                                continue;
+                            end
+                            obj.update_ith_P_by_constraint(i, obj.constraintArr{i,j}, j)
+                        end
                     end
                 end
                 % terminate updating if all the set shrinking fraction < dVFractionThreshold
@@ -153,7 +178,7 @@ classdef SetThmSLAM < handle
                     continue
                 end
                 % Loop through measurements for u'th matching solution
-                interval_CAP    = obj.Omega; % intersection over a single possible matching u
+                interval_CAP    = obj.Omega_L; % intersection over a single possible matching u
                 for q = 1:length(obj.Ma{i})
                     j   = find(obj.Au{i}{u}(q,:)); % q'th measurement associated with j'th marker;
                     LM  = obj.getConvLM(i, q);
@@ -167,6 +192,7 @@ classdef SetThmSLAM < handle
                 end
             end
             obj.Lxy{i}  = and(obj.Lxy{i}, interval_CUP);
+            obj.Lxy{i}  = and(obj.Lxy{i}, obj.Omega_L); % Parking space constraint
         end
 
         function update_jth_P_by_Mi(obj, i, j)
@@ -185,7 +211,42 @@ classdef SetThmSLAM < handle
             end
             constraint  = plus(obj.Lxy{i}, interval_CUP);
             obj.P{j}    = and(obj.P{j}, constraint);
+            obj.P{j}    = and(obj.P{j}, obj.Omega_P); % Parking space constraint
         end        
+        
+        %% Function used to update the sets from rigid body contraints
+        function constraintArr = intiate_contraint(obj)
+            constraintArr   = cell(obj.n);
+            for i = 1:(obj.n-1)
+                pi  = obj.p_hat_rel(:,i);
+                for j = (i+1):obj.n
+                    pj  = obj.p_hat_rel(:,j);
+                    rij = norm(pi-pj, 2);
+                    constraintArr{i,j}  = interval(rij-obj.e_rb, rij+obj.e_rb);
+                    constraintArr{j,i}  = interval(rij-obj.e_rb, rij+obj.e_rb);
+                end
+            end
+        end
+        % Update Pi using constraint between pi and pj
+        function update_ith_P_by_constraint(obj, i, constraint, j)
+            [r, c, ~]   = ExactMinBoundCircle(obj.P{j}.P.V);
+            r_min       = constraint.inf;
+            r_max       = r + constraint.sup;
+            sectors     = decomposeRing2ConvPolygons(c, r_min, r_max, obj.ringSecNum);
+            is_first_Pi_sector  = true;
+            for id = 1:obj.ringSecNum
+                Pi_sector   = and(obj.P{i}, sectors{id});
+                if Pi_sector.isempty() == 0
+                    if is_first_Pi_sector
+                        Pi_union    = Pi_sector;
+                        is_first_Pi_sector  = false;
+                    else
+                        Pi_union    = or(Pi_union, Pi_sector); % automatically using convHull to ensure convex property
+                    end                    
+                end
+            end
+            obj.P{i}    = Pi_union;
+        end
         
         %% Function used to determine if the set update is convergy or not
         % Method: checking if the volumetric descending is below a certain
@@ -247,7 +308,6 @@ classdef SetThmSLAM < handle
                 r_upper     = min([range + obj.e_vr, obj.Measurable_R]);
                 r_bound     = r_upper / cos((t_upper - t_lower)/2.0);
                 vertices    = [r_lower*cos(t_lower), r_lower*sin(t_lower);
-                               r_lower*cos(mid_t), r_lower*sin(mid_t);
                                r_lower*cos(t_upper), r_lower*sin(t_upper);
                                r_upper*cos(t_lower), r_upper*sin(t_lower);
                                r_bound*cos(mid_t), r_bound*sin(mid_t);
@@ -255,6 +315,21 @@ classdef SetThmSLAM < handle
             else
                 vertices    = [0, obj.Measurable_R*cos(t_lower), obj.Measurable_R*cos(t_upper), mid_r*cos(mid_t);...
                                0, obj.Measurable_R*sin(t_lower), obj.Measurable_R*sin(t_upper), mid_r*sin(mid_t)]';
+            end
+        end
+        
+        %% function used to check if the nominal state is in the corresponding sets
+        function check_guaranteed_property(obj)
+            for i = 1:obj.n
+                if in(obj.P{i}, obj.p_hat{i}) == 0
+                    error('nominal state outside the set');
+                end
+            end
+            for i = 1:obj.m
+                if in(obj.Lxy{i}, obj.lxy_hat{i}) == 0 ||...
+                    (in(obj.Lt{i}, wrapToPi(obj.lt_hat{i})) == 0 && in(obj.Lt{i}, wrapTo2Pi(obj.lt_hat{i})) == 0)
+                    error('nominal state outside the set');
+                end
             end
         end
         

@@ -1,7 +1,7 @@
 classdef params
     properties (Constant)
         %% Parking lot parameters
-        SpaceDim    = [45, 30]; % Dimension [width/x, height/y] of the parking space in meter
+        SpaceDim    = [45; 30]; % Dimension [width/x, height/y] of the parking space in meter
         occupiedLots    = [0, 1, 1, 0, 1, 1;
                            1, 0, 1, 1, 0, 0]; % Occupancy array of parking lots
         numLotsPerRow   = size(params.occupiedLots, 2); % Two rows of parking lots in the middle of the map and numLotsPerRow for each row
@@ -56,17 +56,23 @@ classdef params
                             'VariableNames', {'StartPose', 'EndPose', 'Attributes'});
         approxSeparation    = 0.1; % Specify number of poses to return using a separation of approximately 0.1 m
         
-        %% Constant used in initializing Uncertainty Set
-        p_hat_rel   = [0,-0.5*params.carWidth; 0,0.5*params.carWidth; 0.5*params.carLength,0]'; % initial markers' position in ego car's frame: p_hat_rel(:,i) = [x;y]
+        %% Constant used in initializing and Update Uncertainty Set
+        p_hat_rel   = [-0.1*params.carLength,  -0.5*params.carWidth; 
+                       -0.1*params.carLength,   0.5*params.carWidth; 
+                        0.6*params.carLength,   0.0]'; % initial markers' position in ego car's frame: p_hat_rel(:,i) = [x;y]
+        ref_marker  = 3; % index of referred marker for vehicle heading reconstruction
         epsilon_Lt  = deg2rad(1); % in rad
         epsilon_Lxy = 0.1; % in meter
         epsilon_P   = 5; % in meter
-        dVFractionThreshold     = 0.01; % used to determine the termination of set update
+        epsilon_rb  = 0.02; % rigid body uncertainty in [meter]
+        dVFractionThreshold     = 0.05; % used to determine the termination of set update
+        ring_sector_num         = 8; % sector the constraint ring to parts as convex polygons
         
     end
     %% Uncertainty set Properties
     properties
-        Omega; % Entire parking space
+        Omega_L; % Entire parking space (including camera sets L)
+        Omega_P; % Entire parking space (including marker sets P)
         p_hat; % initial marker's position
         n; % number of markers
         Lxy; % Cameras' position: Lxy{i} in 2D
@@ -93,7 +99,8 @@ classdef params
             % and future uncertainty set
             LeftBottom  = [min([min(obj.l_hat(1,:)) - obj.epsilon_Lxy, 0.0]); min([min(obj.l_hat(2,:)) - obj.epsilon_Lxy, 0.0])];
             RightTop    = [max([max(obj.l_hat(1,:)) + obj.epsilon_Lxy, obj.SpaceDim(1)]); max([max(obj.l_hat(2,:)) + obj.epsilon_Lxy, obj.SpaceDim(2)])];
-            obj.Omega   = interval(LeftBottom, RightTop); 
+            obj.Omega_L = interval(LeftBottom, RightTop); 
+            obj.Omega_P = interval([0; 0], obj.SpaceDim);
         end
     end
 end

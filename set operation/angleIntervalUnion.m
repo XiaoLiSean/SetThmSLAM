@@ -1,13 +1,22 @@
 function C = angleIntervalUnion(A, B)
-    % The input set A,B is either a subset of [0, 2*pi] or [-pi, pi]
-    % the output set C is a subset of [-pi, pi] or [0, 2*pi]
-    if A.isempty()
+    % The input set A,B is either a continuous angle interval
+    % the output set C is a continuous angle interval
+    if isempty(A)
         C   = B;
         return
-    elseif B.isempty()
+    elseif isempty(B)
         C   = A;
         return
     end
+    
+    if abs(volume(A) - 2*pi) < deg2rad(0.0001) || volume(A) > 2*pi
+        C   = interval(0, 2*pi);
+        return
+    elseif abs(volume(B) - 2*pi) < deg2rad(0.0001) || volume(B) > 2*pi
+        C   = interval(0, 2*pi);
+        return        
+    end
+    
     % First convert intervals A,B to ranges of [-pi, pi]
     A1  = intervalWrapToPi(A);
     B1  = intervalWrapToPi(B);

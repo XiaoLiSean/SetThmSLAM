@@ -13,8 +13,9 @@ classdef ParkingValet < handle
     end
     methods
         %% Initialization
-        function obj = ParkingValet(cameraType)
+        function obj = ParkingValet(cameraType, enableRigidBodyConstraints)
             addpath('./util')
+            addpath('./set operation')
             obj.pr          = params;
             obj.lib         = demoEssentials;
             obj.vehicleDim  = obj.pr.carDims;
@@ -30,7 +31,7 @@ classdef ParkingValet < handle
             obj.motionPlanner       = pathPlannerRRT(obj.costmap);
             obj.behavioralPlanner   = HelperBehavioralPlanner(obj.pr.routePlan, obj.pr.maxSteeringAngle);
             obj.lonController       = HelperLongitudinalController('SampleTime', obj.pr.sampleTime);
-            obj.SetSLAM     = SetThmSLAM(obj.pr, cameraType);
+            obj.SetSLAM             = SetThmSLAM(obj.pr, cameraType, enableRigidBodyConstraints);
         end
         
         %% Derived from Parking Valet Example
@@ -81,11 +82,12 @@ classdef ParkingValet < handle
                     obj.SetSLAM.updateSets();
                 end
                 % =====================================================
-                % Update Plot
+                % Update Plot and Check if nominal states are in corresponding sets
                 if mod(current_time, obj.pr.plotTime) < epsilon
                     obj.SetSLAM.updateNominalStates(currentPose);
                     obj.SetSLAM.eraseDrawing();
                     obj.SetSLAM.drawSets();
+                    obj.SetSLAM.check_guaranteed_property()
                     obj.vehicleSim.updatePlot();
                 end
                 % =====================================================
@@ -170,8 +172,8 @@ classdef ParkingValet < handle
         function showCameras(obj)
             set(gcf,'color','w');
             plot(obj.costmap, 'Inflation', 'off'); hold on;
-            xlim([obj.pr.Omega.inf(1) obj.pr.Omega.sup(1)]);
-            ylim([obj.pr.Omega.inf(2) obj.pr.Omega.sup(2)]);
+            xlim([obj.pr.Omega_L.inf(1) obj.pr.Omega_L.sup(1)]);
+            ylim([obj.pr.Omega_L.inf(2) obj.pr.Omega_L.sup(2)]);
             for i = 1:obj.pr.m
                 patch   = obj.get_wedge_patch(i);
                 fill(patch(1,:), patch(2,:), 'red', 'FaceAlpha', 0.02, 'EdgeAlpha', 0.05);

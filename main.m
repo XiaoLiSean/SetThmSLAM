@@ -2,5 +2,6 @@ clear all; clc;
 close all;
 
 %% Initialize Parking Space and Visualization
-PV  = ParkingValet('stereo');
+enableRBConstraints     = false;
+PV                      = ParkingValet('stereo', enableRBConstraints);
 PV.simulation();

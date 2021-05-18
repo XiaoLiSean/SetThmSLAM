@@ -15,3 +15,6 @@ clear all; clc;
 % angleIntervalIntersection(interval(pi*16/18, pi*20/18), interval(-pi*1/18, pi*21/18))
 % angleIntervalIntersection(interval(pi*1/4, pi*7/4), interval(-pi*3/4, pi*3/4))
 % angleIntervalIntersection(interval(-pi, pi), interval(3.0072, 3.2062))
+% disp('-------------')
+intervalWrapTo2Pi(interval(0.6080,6.3466))
+%intervalWrapTo2Pi(interval(-0.1,6.0))

@@ -1,12 +1,21 @@
 function C = angleIntervalIntersection(A, B)
-    % The input set A,B is either a subset of [0, 2*pi] or [-pi, pi]
-    % the output set C is a subset of [-pi, pi] or [0, 2*pi]
-    if A.isempty()
+    % The input set A,B is either a continuous angle interval
+    % the output set C is a continuous angle interval
+    
+    if isempty(A)
         C   = A;
         return
-    elseif B.isempty()
+    elseif isempty(B)
         C   = B;
         return
+    end
+    
+    if abs(volume(A) - 2*pi) < deg2rad(0.0001) || volume(A) > 2*pi
+        C   = B;
+        return
+    elseif abs(volume(B) - 2*pi) < deg2rad(0.0001) || volume(B) > 2*pi
+        C   = A;
+        return        
     end
     
     % First convert intervals A,B to ranges of [-pi, pi]
@@ -27,8 +36,11 @@ function C = angleIntervalIntersection(A, B)
     if length(C) == 1
         C   = C{1};
     else
+        C   = and(C{1}, C{2});
+        warning('Intersection sets number larger than 1')
+        A
+        B
         C
-        error('Intersection sets number larger than 1')
     end
 end
 
