@@ -87,8 +87,8 @@ classdef ParkingValet < handle
                     obj.SetSLAM.updateNominalStates(currentPose);
                     obj.SetSLAM.eraseDrawing();
                     obj.SetSLAM.drawSets();
-                    obj.SetSLAM.check_guaranteed_property()
                     obj.vehicleSim.updatePlot();
+                    obj.SetSLAM.check_guaranteed_property()
                 end
                 % =====================================================
                 % Check if the sub-goal is reached

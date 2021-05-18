@@ -27,8 +27,8 @@ classdef params
         simLoopDt   = 0.01; % [sec] time step of each simulation loop (other time constant should be interger times of this)
         propTime    = 0.01; % [sec] [0.01 default] dt of adjacent set propagation (k --> k+1) during kinametics update (should be the smallest among the four)
         sampleTime  = 0.05; % [sec] [0.05 default] pi longitudinal controller sample time for the integral
-        updateTime  = 0.1; % [sec] dt of adjacent measurement set update (k --> k+1)
-        plotTime    = 0.1; % [sec] time interval to update plot
+        updateTime  = 0.2; % [sec] dt of adjacent measurement set update (k --> k+1)
+        plotTime    = 0.2; % [sec] time interval to update plot
         
         %% Ego RC car parameters (refer to vehicleDimensions in MATLAB Doc.)
         carLength   = 4.0; % car length in meters

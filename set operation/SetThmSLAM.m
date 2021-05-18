@@ -230,8 +230,8 @@ classdef SetThmSLAM < handle
         % Update Pi using constraint between pi and pj
         function update_ith_P_by_constraint(obj, i, constraint, j)
             [r, c, ~]   = ExactMinBoundCircle(obj.P{j}.P.V);
-            r_min       = constraint.inf;
-            r_max       = r + constraint.sup;
+            r_min       = max([constraint.inf - r, 0]);
+            r_max       = constraint.sup + r;
             sectors     = decomposeRing2ConvPolygons(c, r_min, r_max, obj.ringSecNum);
             is_first_Pi_sector  = true;
             for id = 1:obj.ringSecNum
