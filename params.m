@@ -21,14 +21,14 @@ classdef params
         m           = size(params.l_hat, 2); % Numbers of total cameras
         Measurable_R    = 20; % Markers within Measurable_R are measurable
         e_va        = deg2rad(1); % angle measurement noise bound in rad
-        e_vr        = 0.5; % range measurement noise bound in rad
+        e_vr        = 0.05; % range measurement noise bound in rad
         
         %% Simulation time sychronization and management
         simLoopDt   = 0.01; % [sec] time step of each simulation loop (other time constant should be interger times of this)
         propTime    = 0.01; % [sec] [0.01 default] dt of adjacent set propagation (k --> k+1) during kinametics update (should be the smallest among the four)
         sampleTime  = 0.05; % [sec] [0.05 default] pi longitudinal controller sample time for the integral
-        updateTime  = 0.2; % [sec] dt of adjacent measurement set update (k --> k+1)
-        plotTime    = 0.2; % [sec] time interval to update plot
+        updateTime  = 0.05; % [sec] dt of adjacent measurement set update (k --> k+1)
+        plotTime    = 0.3; % [sec] time interval to update plot
         
         %% Ego RC car parameters (refer to vehicleDimensions in MATLAB Doc.)
         carLength   = 4.0; % car length in meters
@@ -65,7 +65,7 @@ classdef params
         epsilon_Lxy = 0.1; % in meter
         epsilon_P   = 5; % in meter
         epsilon_rb  = 0.02; % rigid body uncertainty in [meter]
-        dVFractionThreshold     = 0.05; % used to determine the termination of set update
+        dVFractionThreshold     = 0.01; % used to determine the termination of set update
         ring_sector_num         = 8; % sector the constraint ring to parts as convex polygons
         
     end

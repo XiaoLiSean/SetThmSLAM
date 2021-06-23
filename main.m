@@ -2,7 +2,8 @@ clear all; clc;
 close all;
 
 %% Initialize Parking Space and Visualization
-enableRBConstraints     = true; % [true/false]
-cameraType              = 'mono'; % ['mono'/'stereo']
-PV                      = ParkingValet(cameraType, enableRBConstraints);
+cameraType              = 'stereo'; % ['mono'/'stereo']
+enableRBConstraints     = false; % [true/false] to enable rigid body constraint in set update
+isReconstruction        = true; % reconstruction and plot the defined vehicle state instead of the markers
+PV                      = ParkingValet(cameraType, enableRBConstraints, isReconstruction);
 PV.simulation();

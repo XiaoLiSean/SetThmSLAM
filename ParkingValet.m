@@ -13,7 +13,7 @@ classdef ParkingValet < handle
     end
     methods
         %% Initialization
-        function obj = ParkingValet(cameraType, enableRigidBodyConstraints)
+        function obj = ParkingValet(cameraType, enableRigidBodyConstraints, isReconstruction)
             addpath('./util')
             addpath('./set operation')
             obj.pr          = params;
@@ -31,7 +31,7 @@ classdef ParkingValet < handle
             obj.motionPlanner       = pathPlannerRRT(obj.costmap);
             obj.behavioralPlanner   = HelperBehavioralPlanner(obj.pr.routePlan, obj.pr.maxSteeringAngle);
             obj.lonController       = HelperLongitudinalController('SampleTime', obj.pr.sampleTime);
-            obj.SetSLAM             = SetThmSLAM(obj.pr, cameraType, enableRigidBodyConstraints);
+            obj.SetSLAM             = SetThmSLAM(obj.pr, cameraType, enableRigidBodyConstraints, isReconstruction);
         end
         
         %% Derived from Parking Valet Example

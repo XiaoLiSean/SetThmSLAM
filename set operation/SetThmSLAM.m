@@ -42,15 +42,28 @@ classdef SetThmSLAM < handle
         Lxy_Vol_pre; % volume of Lxy{i} before set update
         Lt_Vol_pre; % volume of Lt{i} before set update
         
-        %% Variables used to reconstruct vehicle states and sets
+        %% Variables used to update the sets using rigid body constraints
         enableRigidBodyConstraints; % [boolean] enable set update from rigid body contraints
         e_rb; % rigid body uncertainty in [meter]
         constraintArr; % n*n cell stores interval bounds on the rigid body edge length
         ringSecNum; % sector the constraint ring to parts as convex polygons
+        
+        %% Variables used to reconstruct vehicle states and sets
+        isReconstruction; % reconstruction and plot the defined vehicle state instead of the markers
+        reconRefIdx; % index of referred marker for vehicle heading reconstruction
+        pxy; % nominal states of the center of mass (CoM) of the rigid body skeleton
+        pt; % nominal vehicle heading
+        Pxy; % pxy \in Pxy
+        Pt; % pt \in Pt
+        h_Pxy;
+        h_Pt;
+        h_pxy;
+        h_pt;
+        
     end
     
     methods
-        function obj = SetThmSLAM(pr, cameraType, enableRigidBodyConstraints)
+        function obj = SetThmSLAM(pr, cameraType, enableRigidBodyConstraints, isReconstruction)
             if strcmp(cameraType,'stereo')
                 obj.isStereoVision  = true;
                 obj.e_vr            = pr.e_vr;
@@ -79,10 +92,16 @@ classdef SetThmSLAM < handle
             obj.Measurable_R                = pr.Measurable_R;
             obj.dVFractionThreshold         = pr.dVFractionThreshold;
             obj.enableRigidBodyConstraints  = enableRigidBodyConstraints;
+            obj.isReconstruction            = isReconstruction;
             if obj.enableRigidBodyConstraints
                 obj.e_rb            = pr.epsilon_rb;
-                obj.constraintArr   = obj.intiate_contraint();
+                obj.constraintArr   = obj.initiate_contraint();
                 obj.ringSecNum      = pr.ring_sector_num;
+            end
+            if obj.isReconstruction
+                obj.reconRefIdx     = pr.ref_marker;
+                obj.updateReconstructedNominalStates();
+                obj.updateReconstructedSets();
             end
             obj.updatePrevVolume();
         end
@@ -117,7 +136,7 @@ classdef SetThmSLAM < handle
                     obj.update_ith_Lxy(i);
                     markers     = obj.getUpdateableArr(i);
                     for idx = 1:length(markers)
-                        obj.update_jth_P_by_Mi(i, markers(idx))
+                        obj.update_jth_P_by_Mi(i, markers(idx));
                     end
                 end
                 % set update from rigid body contraints
@@ -127,9 +146,13 @@ classdef SetThmSLAM < handle
                             if i == j
                                 continue;
                             end
-                            obj.update_ith_P_by_constraint(i, obj.constraintArr{i,j}, j)
+                            obj.update_ith_P_by_constraint(i, obj.constraintArr{i,j}, j);
                         end
                     end
+                end
+                % update recontructed sets for new defined states
+                if obj.isReconstruction
+                    obj.updateReconstructedSets();
                 end
                 % terminate updating if all the set shrinking fraction < dVFractionThreshold
                 if obj.isConvergy()
@@ -214,8 +237,25 @@ classdef SetThmSLAM < handle
             obj.P{j}    = and(obj.P{j}, obj.Omega_P); % Parking space constraint
         end        
         
+        function updateReconstructedSets(obj)
+            x_min   = 0;
+            x_max   = 0;
+            y_min   = 0;
+            y_max   = 0;
+            for i = 1:obj.n
+                p_max   = max(obj.P{i}.P.V, [], 1);
+                p_min   = min(obj.P{i}.P.V, [], 1);
+                x_min   = x_min + p_min(1)/obj.n;
+                x_max   = x_max + p_max(1)/obj.n;
+                y_min   = y_min + p_min(2)/obj.n;
+                y_max   = y_max + p_max(2)/obj.n;
+            end
+            obj.Pxy     = mptPolytope(interval([x_min;y_min],[x_max;y_max]));
+            [betaInf, betaSup]  = atan2OverConvPolygons(obj.P{obj.reconRefIdx}, obj.Pxy);
+            obj.Pt      = interval(betaInf, betaSup);
+        end
         %% Function used to update the sets from rigid body contraints
-        function constraintArr = intiate_contraint(obj)
+        function constraintArr = initiate_contraint(obj)
             constraintArr   = cell(obj.n);
             for i = 1:(obj.n-1)
                 pi  = obj.p_hat_rel(:,i);
@@ -255,7 +295,7 @@ classdef SetThmSLAM < handle
             terminated = true;
             for i = 1:obj.n
                 dVFraction  = (obj.P_Vol_pre(i) - volume(obj.P{i})) / obj.P_Vol_pre(i);
-                if dVFraction < -1e-10
+                if dVFraction < -1e-4
                     warning('Get increasing volume in set updating');
                 end
                 if dVFraction > obj.dVFractionThreshold
@@ -354,7 +394,8 @@ classdef SetThmSLAM < handle
             end
         end
         
-        %% Update nominal marker position p_hat using nominal par states p_car
+        %% Update nominal states
+        % update marker position p_hat using nominal par states p_car
         function updateNominalStates(obj, p_car)
             obj.p_car   = [p_car(1); p_car(2); deg2rad(p_car(3))];
             for i = 1:obj.n
@@ -362,8 +403,20 @@ classdef SetThmSLAM < handle
                 y_marker_i      = obj.p_car(2) + obj.p_hat_rel(1,i)*sin(obj.p_car(3)) + obj.p_hat_rel(2,i)*cos(obj.p_car(3));
                 obj.p_hat{i}    = [x_marker_i; y_marker_i];
             end
+            if obj.isReconstruction
+                obj.updateReconstructedNominalStates()
+            end
         end
-        
+        % update reconstructed states: CoM of rigid body skeleton and vehicle heading
+        function updateReconstructedNominalStates(obj)
+            obj.pxy     = zeros(2,1);
+            for i = 1:obj.n
+                obj.pxy     = obj.pxy + obj.p_hat{i}/obj.n;
+            end
+            delta   = obj.p_hat{obj.reconRefIdx} - obj.pxy;
+            obj.pt  = atan2(delta(2), delta(1));
+        end
+                
         %% Obtain measurement from the CCTV system
         function updateMeasurements(obj)
             obj.Ma      = {};
@@ -402,10 +455,23 @@ classdef SetThmSLAM < handle
         
         %% Visualization
         function drawSets(obj)
-            for i = 1:obj.n
-                obj.h_P{i}      = plot(obj.P{i});
-                obj.h_p_hat{i}  = plot(obj.p_hat{i}(1), obj.p_hat{i}(2), 'r.', 'MarkerSize', 10);
+            if obj.isReconstruction
+                obj.h_Pxy   = plot(obj.Pxy);
+                obj.h_pxy   = plot(obj.pxy(1), obj.pxy(2), 'r.', 'MarkerSize', 10);
+                r           = norm(obj.pxy-obj.p_hat{obj.reconRefIdx}, 2);
+                t1          = obj.Pt.inf;
+                t2          = obj.Pt.sup;
+                x           = [obj.pxy(1)+r*cos(t1), obj.pxy(1), obj.pxy(1)+r*cos(t2)];
+                y           = [obj.pxy(2)+r*sin(t1), obj.pxy(2), obj.pxy(2)+r*sin(t2)];
+                obj.h_Pt    = plot(x, y, 'b');
+                obj.h_pt    = plot([obj.pxy(1), obj.p_hat{obj.reconRefIdx}(1)], [obj.pxy(2), obj.p_hat{obj.reconRefIdx}(2)], 'r--');
+            else
+                for i = 1:obj.n
+                    obj.h_P{i}      = plot(obj.P{i});
+                    obj.h_p_hat{i}  = plot(obj.p_hat{i}(1), obj.p_hat{i}(2), 'r.', 'MarkerSize', 10);   
+                end
             end
+
             for i = 1:obj.m
                 obj.h_Lxy{i}    = plot(obj.Lxy{i});
                 t1  = obj.Lt{i}.inf;
@@ -418,13 +484,22 @@ classdef SetThmSLAM < handle
         end
         
         function eraseDrawing(obj)
-            if isempty(obj.h_P)
+            if isempty(obj.h_Lxy)
                 return
             end
-            for i = 1:obj.n
-                delete(obj.h_P{i})
-                delete(obj.h_p_hat{i})
+            
+            if obj.isReconstruction
+                delete(obj.h_Pxy)
+                delete(obj.h_Pt)
+                delete(obj.h_pxy)
+                delete(obj.h_pt)
+            else
+                for i = 1:obj.n
+                    delete(obj.h_P{i})
+                    delete(obj.h_p_hat{i})
+                end
             end
+            
             for i = 1:obj.m
                 delete(obj.h_Lxy{i})
                 delete(obj.h_Lt{i})
