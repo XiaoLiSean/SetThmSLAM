@@ -16,10 +16,10 @@ class RPLidarA1(object):
         self.on = True
 
     def update(self):
-        scans = self.lidar.iter_scans(550)
+        scans = self.lidar.iter_scans()
         while self.on:
             try:
-                # time.sleep(2) # solve error of "rplidar.RPLidarException: Wrong body size"
+                time.sleep(2) # solve error of "rplidar.RPLidarException: Wrong body size"
                 for scan in scans:
                     self.distances = [item[2] for item in scan]
                     self.angles = [item[1] for item in scan]
@@ -28,7 +28,7 @@ class RPLidarA1(object):
 
     def shutdown(self):
         self.on = False
-        # time.sleep(5) # wait for the update thread to finish and stop
+        time.sleep(2) # wait for the update thread to finish and stop
         self.lidar.stop()
         self.lidar.stop_motor()
         self.lidar.disconnect()
