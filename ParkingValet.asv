@@ -53,31 +53,28 @@ classdef ParkingValet < handle
             addpath('./util')
             addpath('./set operation')
             % -------------------------------------------------------------
-            obj.pr  = params;
             if strcmp(cameraType,'stereo')
                 obj.isStereoVision  = true;
-                obj.e_va            = obj.pr.e_va;
-                obj.e_vr            = obj.pr.e_vr;
             elseif strcmp(cameraType,'mono')
                 obj.isStereoVision  = false;
-                obj.e_va            = obj.pr.e_va;
             end
-            obj.Measurable_R    = obj.pr.Measurable_R;
-            obj.p_hat_rel       = obj.pr.p_hat_rel;
-            obj.p_car           = obj.pr.p_0;
+            obj.Measurable_R    = pr.Measurable_R;
+            obj.p_hat_rel       = pr.p_hat_rel;
+            obj.p_car           = pr.p_0;
             for i = 1:obj.pr.n
-                obj.p_hat{i}    = [obj.pr.p_hat(1,i); obj.pr.p_hat(2,i)];
+                obj.p_hat{i}    = [pr.p_hat(1,i); pr.p_hat(2,i)];
             end
             for i = 1:obj.pr.m
-                obj.lxy_hat{i}  = [obj.pr.l_hat(1,i); obj.pr.l_hat(2,i)];
-                obj.lt_hat{i}   = obj.pr.l_hat(3,i);
+                obj.lxy_hat{i}  = [pr.l_hat(1,i); pr.l_hat(2,i)];
+                obj.lt_hat{i}   = pr.l_hat(3,i);
             end
             obj.isReconstruction    = isReconstruction;
             if obj.isReconstruction
-                obj.reconRefIdx     = obj.pr.ref_marker;
+                obj.reconRefIdx     = pr.ref_marker;
                 obj.updateReconstructedNominalStates();
             end
             % -------------------------------------------------------------
+            obj.pr          = params;
             obj.lib         = demoEssentials;
             obj.vehicleDim  = obj.pr.carDims;
             obj.costmap             = obj.generateParkingSpaceCostmap(); % Generate and Visualize Parking Space with Cameras
@@ -92,7 +89,7 @@ classdef ParkingValet < handle
             obj.motionPlanner       = pathPlannerRRT(obj.costmap);
             obj.behavioralPlanner   = HelperBehavioralPlanner(obj.pr.routePlan, obj.pr.maxSteeringAngle);
             obj.lonController       = HelperLongitudinalController('SampleTime', obj.pr.sampleTime);
-            obj.SetSLAM             = SetThmSLAM(obj.pr, obj.isStereoVision, enableRigidBodyConstraints, isReconstruction, obj.p_hat_rel);
+            obj.SetSLAM             = SetThmSLAM(obj.pr, isStereoVision, enableRigidBodyConstraints, isReconstruction, obj.p_hat_rel);
         end
         
         %% Derived from Parking Valet Example
@@ -149,8 +146,8 @@ classdef ParkingValet < handle
                 % Update Plot and Check if nominal states are in corresponding sets
                 if mod(current_time, obj.pr.plotTime) < epsilon
                     obj.updateNominalStates(currentPose);
-                    obj.eraseDrawing();
-                    obj.drawSets();
+                    obj.SetSLAM.eraseDrawing();
+                    obj.SetSLAM.drawSets();
                     obj.vehicleSim.updatePlot();
                     obj.check_guaranteed_property()
                 end
@@ -258,7 +255,7 @@ classdef ParkingValet < handle
         function [isMeasurable, alpha, range] = isMeasurable(obj, p, lxy, lt)
             distance    = norm(p-lxy);
             angle       = atan2(p(2)-lxy(2), p(1)-lxy(1)) - lt;
-            isMeasurable    = (distance <= obj.Measurable_R) & (abs(angle) <= 0.5*obj.pr.FoV); 
+            isMeasurable    = (distance <= obj.Measurable_R) & (abs(angle) <= 0.5*obj.FoV); 
             noise_a     = -obj.e_va + 2*obj.e_va*rand();
             alpha       = angle + noise_a;
             range       = nan;
@@ -272,7 +269,7 @@ classdef ParkingValet < handle
         % update marker position p_hat using nominal par states p_car
         function updateNominalStates(obj, p_car)
             obj.p_car   = [p_car(1); p_car(2); deg2rad(p_car(3))];
-            for i = 1:obj.pr.n
+            for i = 1:obj.n
                 x_marker_i      = obj.p_car(1) + obj.p_hat_rel(1,i)*cos(obj.p_car(3)) - obj.p_hat_rel(2,i)*sin(obj.p_car(3));
                 y_marker_i      = obj.p_car(2) + obj.p_hat_rel(1,i)*sin(obj.p_car(3)) + obj.p_hat_rel(2,i)*cos(obj.p_car(3));
                 obj.p_hat{i}    = [x_marker_i; y_marker_i];
@@ -323,9 +320,9 @@ classdef ParkingValet < handle
         end
         
         function patch = get_wedge_patch(obj, i)
-            [x,y,theta,FoV,r] = deal(obj.pr.l_hat(1,i), obj.pr.l_hat(2,i), obj.pr.l_hat(3,i), obj.pr.FoV, obj.pr.Measurable_R);
-            theta_l     = theta - 0.5*FoV;
-            theta_u     = theta + 0.5*FoV;
+            [x,y,theta,obj.pr.FoV,r] = deal(obj.pr.l_hat(1,i), obj.pr.l_hat(2,i), obj.pr.l_hat(3,i), obj.pr.FoV, obj.pr.Measurable_R);
+            theta_l     = theta - 0.5*obj.pr.FoV;
+            theta_u     = theta + 0.5*obj.pr.FoV;
             thetas      = theta_l:pi/180:theta_u;
             patch       = [x;y];
             
@@ -348,7 +345,7 @@ classdef ParkingValet < handle
                 obj.h_pt    = plot([obj.pxy(1), obj.p_hat{obj.reconRefIdx}(1)], [obj.pxy(2), obj.p_hat{obj.reconRefIdx}(2)], 'r--');
             else
                 for i = 1:obj.pr.n
-                    obj.h_P{i}      = plot(obj.SetSLAM.P{i});
+                    obj.h_P{i}      = plot(obj..P{i});
                     obj.h_p_hat{i}  = plot(obj.p_hat{i}(1), obj.p_hat{i}(2), 'r.', 'MarkerSize', 10);   
                 end
             end

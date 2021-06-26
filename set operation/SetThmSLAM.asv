@@ -10,6 +10,11 @@ classdef SetThmSLAM < handle
         Lt; % Camera heading uncertainty set
         P; % marker position uncertainty set
         
+        %% Plot handler for three typies of uncertainty sets
+        h_Lxy;
+        h_Lt;
+        h_P;
+        
         %% Bounded error for uncertainty sets
         e_va; % angle measurement noise is bounded by e_va
         e_vr; % range measurement noise is bounded by e_vr
@@ -39,6 +44,10 @@ classdef SetThmSLAM < handle
         reconRefIdx; % index of referred marker for vehicle heading reconstruction
         Pxy; % pxy \in Pxy
         Pt; % pt \in Pt
+        
+        %% Plot handler for reconstructed uncertainty sets
+        h_Pxy;
+        h_Pt;
         
     end
     
@@ -81,12 +90,7 @@ classdef SetThmSLAM < handle
         % remain to be developed, currently assign ground true A_hat as the
         % only unique matching solution for Au
         function getMeasureAndMatching(obj, Ma, Mr, A_hat)
-            if obj.isStereoVision
-                obj.Ma  = Ma;
-                obj.Mr  = Mr;
-            else
-                obj.Ma  = Ma;
-            end
+            if isSt
             for i = 1:obj.m
                 obj.Au{i}{1}    = A_hat{i};
             end
@@ -354,6 +358,59 @@ classdef SetThmSLAM < handle
                     [~,newMarkers,~]    = find(obj.Au{i}{u});
                     markers             = intersect(markers, newMarkers);
                 end
+            end
+        end
+        
+        %% Visualization
+        function drawSets(obj)
+            if obj.isReconstruction
+                obj.h_Pxy   = plot(obj.Pxy);
+                obj.h_pxy   = plot(obj.pxy(1), obj.pxy(2), 'r.', 'MarkerSize', 10);
+                r           = norm(obj.pxy-obj.p_hat{obj.reconRefIdx}, 2);
+                t1          = obj.Pt.inf;
+                t2          = obj.Pt.sup;
+                x           = [obj.pxy(1)+r*cos(t1), obj.pxy(1), obj.pxy(1)+r*cos(t2)];
+                y           = [obj.pxy(2)+r*sin(t1), obj.pxy(2), obj.pxy(2)+r*sin(t2)];
+                obj.h_Pt    = plot(x, y, 'b');
+                obj.h_pt    = plot([obj.pxy(1), obj.p_hat{obj.reconRefIdx}(1)], [obj.pxy(2), obj.p_hat{obj.reconRefIdx}(2)], 'r--');
+            else
+                for i = 1:obj.n
+                    obj.h_P{i}      = plot(obj.P{i});
+                    obj.h_p_hat{i}  = plot(obj.p_hat{i}(1), obj.p_hat{i}(2), 'r.', 'MarkerSize', 10);   
+                end
+            end
+
+            for i = 1:obj.m
+                obj.h_Lxy{i}    = plot(obj.Lxy{i});
+                t1  = obj.Lt{i}.inf;
+                t2  = obj.Lt{i}.sup;
+                r   = 0.25*obj.Measurable_R; % line length to visualize the heading uncertainty
+                x   = [obj.lxy_hat{i}(1)+r*cos(t1), obj.lxy_hat{i}(1), obj.lxy_hat{i}(1)+r*cos(t2)];
+                y   = [obj.lxy_hat{i}(2)+r*sin(t1), obj.lxy_hat{i}(2), obj.lxy_hat{i}(2)+r*sin(t2)];
+                obj.h_Lt{i}     = plot(x, y, 'b');
+            end
+        end
+        
+        function eraseDrawing(obj)
+            if isempty(obj.h_Lxy)
+                return
+            end
+            
+            if obj.isReconstruction
+                delete(obj.h_Pxy)
+                delete(obj.h_Pt)
+                delete(obj.h_pxy)
+                delete(obj.h_pt)
+            else
+                for i = 1:obj.n
+                    delete(obj.h_P{i})
+                    delete(obj.h_p_hat{i})
+                end
+            end
+            
+            for i = 1:obj.m
+                delete(obj.h_Lxy{i})
+                delete(obj.h_Lt{i})
             end
         end
     end
