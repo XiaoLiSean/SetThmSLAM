@@ -10,6 +10,7 @@ classdef ParkingValet < handle
         pathAnalyzer;
         lonController;
         SetSLAM;
+        FastSLAM;
         
         %% Measurement information
         isStereoVision;
@@ -52,6 +53,7 @@ classdef ParkingValet < handle
         function obj = ParkingValet(cameraType, enableRigidBodyConstraints, isReconstruction)
             addpath('./util')
             addpath('./set operation')
+            addpath('./partical filtering')
             % -------------------------------------------------------------
             obj.pr  = params;
             if strcmp(cameraType,'stereo')
@@ -93,6 +95,7 @@ classdef ParkingValet < handle
             obj.behavioralPlanner   = HelperBehavioralPlanner(obj.pr.routePlan, obj.pr.maxSteeringAngle);
             obj.lonController       = HelperLongitudinalController('SampleTime', obj.pr.sampleTime);
             obj.SetSLAM             = SetThmSLAM(obj.pr, obj.isStereoVision, enableRigidBodyConstraints, isReconstruction, obj.p_hat_rel);
+            obj.FastSLAM            = FastSLAM(obj.pr, obj.isStereoVision);
         end
         
         %% Derived from Parking Valet Example
@@ -126,6 +129,7 @@ classdef ParkingValet < handle
                     currentPose = obj.vehicleSim.getVehiclePose();
                     currentVel  = obj.vehicleSim.getVehicleVelocity();
                     obj.SetSLAM.propagateSets();
+                    obj.FastSLAM.propagateParticles();
                 end
                 % =====================================================
                 % Update Control Signal
@@ -143,7 +147,9 @@ classdef ParkingValet < handle
                     end
                     obj.updateMeasurements();
                     obj.SetSLAM.getMeasureAndMatching(obj.Ma, obj.Mr, obj.A_hat);
+                    obj.FastSLAM.getMeasureAndMatching(obj.Ma, obj.Mr, obj.A_hat);
                     obj.SetSLAM.updateSets();
+                    obj.FastSLAM.updateParticles();
                 end
                 % =====================================================
                 % Update Plot and Check if nominal states are in corresponding sets
@@ -256,9 +262,7 @@ classdef ParkingValet < handle
         end
         
         function [isMeasurable, alpha, range] = isMeasurable(obj, p, lxy, lt)
-            distance    = norm(p-lxy);
-            angle       = atan2(p(2)-lxy(2), p(1)-lxy(1)) - lt;
-            isMeasurable    = (distance <= obj.Measurable_R) & (abs(angle) <= 0.5*obj.pr.FoV); 
+            [angle, distance, isMeasurable] = measureModel(p, [lxy; lt], obj.Measurable_R, obj.pr.FoV);
             noise_a     = -obj.e_va + 2*obj.e_va*rand();
             alpha       = angle + noise_a;
             range       = nan;

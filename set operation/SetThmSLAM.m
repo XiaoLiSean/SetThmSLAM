@@ -56,7 +56,7 @@ classdef SetThmSLAM < handle
             obj.Omega_P = mptPolytope(pr.Omega_P);
             obj.Lt      = pr.Lt;
             obj.e_va    = pr.e_va;
-            obj.e_w     = pr.maxSpeed*pr.propTime*[1;1];
+            obj.e_w     = pr.e_w;
             obj.isStereoVision  = isStereoVision;
             if obj.isStereoVision
                 obj.e_vr    = pr.e_vr;
@@ -111,7 +111,7 @@ classdef SetThmSLAM < handle
                     end
                     obj.update_ith_Lt(i);
                     obj.update_ith_Lxy(i);
-                    markers     = obj.getUpdateableArr(i);
+                    markers     = getUpdateableArr(obj.Au{i});
                     for idx = 1:length(markers)
                         obj.update_jth_P_by_Mi(i, markers(idx));
                     end
@@ -333,27 +333,6 @@ classdef SetThmSLAM < handle
             else
                 vertices    = [0, obj.Measurable_R*cos(t_lower), obj.Measurable_R*cos(t_upper), mid_r*cos(mid_t);...
                                0, obj.Measurable_R*sin(t_lower), obj.Measurable_R*sin(t_upper), mid_r*sin(mid_t)]';
-            end
-        end
-        
-        %% Function to obtain arr of marker indexes which can be updated with M{i}
-        function markers = getUpdateableArr(obj, i)
-            markers = [];
-            num     = length(obj.Au{i});
-            % Loop through solutions for i'th camera measurement
-            if isempty(obj.Au{i}{1})
-                return
-            end
-            for u = 1:num
-                if isempty(obj.Au{i}{u})
-                    continue
-                end
-                if u == 1
-                    [~,markers,~]       = find(obj.Au{i}{u});
-                else
-                    [~,newMarkers,~]    = find(obj.Au{i}{u});
-                    markers             = intersect(markers, newMarkers);
-                end
             end
         end
     end

@@ -9,7 +9,6 @@
         Sigma; % variance of camera states  
         
         %% Measurement and data association
-        isStereoVision;
         Ma; % Ma{i} angle measurement set for camera i
         Mr; % Mr{i} range measurement set for camera i
         Au; % Au{i}{.} is matching solution matrices for measurement from camera i
@@ -20,8 +19,7 @@
             obj.n       = pr.n;
             obj.m       = pr.m;
             obj.s       = pr.particle_num;
-            obj.isStereoVision  = isStereoVision;
-            obj.weights         = ones(obj.s,1)/obj.s;
+            obj.weights = ones(obj.s,1)/obj.s;
             for k = 1:obj.s
                 % marker in 2D using EKF
                 for i = 1:obj.n
@@ -44,40 +42,18 @@
             end
         end
         
-        % we assume known association
         function updateParticles(obj)
             % Loop through m cameras
             for i = 1:obj.m
                 if isempty(obj.Au{i})
                     continue
                 end
-                markers     = getUpdateableArr(obj.Au{i});
+                markers     = getUpdateableArr(obj.Au, i);
                 for idx = 1:length(markers)
-                    j   = markers(idx);
-                    q   = find(obj.Au{i}{1}(:,j)); % q'th measurement associated with j'th marker; 
-                    if obj.isStereoVision
-                        bearing = obj.Ma{i}(q);
-                        range   = obj.Mr{i}(q);
-                        z       = [bearing; range];
-                    else
-                        z       = obj.Ma{i}(q);  
-                    end
-                    % update particle weights with measurement z
-                    for k = 1:obj.s
-                        p_of_z  = obj.particles{k}.EKFMarker{j}.measurementUpdate(z, obj.particles{k}.camPoses(:,i));
-                        obj.weights(k)  = obj.weights(k)*p_of_z; 
-                    end
+                    obj.update_jth_P_by_Mi(i, markers(idx));
+                    obmeasurementUpdate(obj, z, camState)
                 end
             end
-            % normalize Weights
-            weight_sum      = sum(obj.weights);
-            obj.weights     = obj.weights / weight_sum;
-
-            Neff = 1 / sum(obj.weights.^2);
-            if Neff < obj.s / 2
-                obj.resample();
-            end
-            obj.updateMeanAndVariance();
         end
         
         %% Get measurement and update Matching: data association
@@ -97,7 +73,7 @@
         
         %% Resample particles
         function resample(obj)
-            newSamples  = cell(1, obj.s);
+            newSamples  = zeros(size(obj.particles));
             newWeight   = zeros(size(obj.weights));
             W           = cumsum(obj.weights);
             r           = rand/obj.s;
@@ -107,7 +83,7 @@
                 while u > W(count)
                     count   = count+1;
                 end
-                newSamples{j}       = obj.particles{count};
+                newSamples(:,j)     = obj.particles(:,count);
                 newWeight(j)        = 1/obj.s;
             end
             obj.particles   = newSamples;

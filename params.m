@@ -43,6 +43,7 @@ classdef params
         maxSteeringAngle    = 35; % in degrees
         Wheelbase           = params.carLength - params.RearOverhang - params.FrontOverhang;
         MinTurningRadius    = params.Wheelbase/tan(params.maxSteeringAngle*pi/180); % in meters
+        e_w                 = params.maxSpeed*params.propTime*[1;1]; % motion update bound
 
         %% Path planning
         numCircles  = 4; % Collision checker refer to (vehicleCostmap and CollisionChecker in MATLAB Doc.)
@@ -67,6 +68,9 @@ classdef params
         epsilon_rb  = 0.02; % rigid body uncertainty in [meter]
         dVFractionThreshold     = 0.01; % used to determine the termination of set update
         ring_sector_num         = 8; % sector the constraint ring to parts as convex polygons
+        
+        %% Variables for setting up particle filter
+        particle_num    = 50; % number of particles
         
     end
     %% Uncertainty set Properties
