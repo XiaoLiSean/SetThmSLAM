@@ -20,8 +20,8 @@ classdef params
                    15, 20, pi/2; 30, 20, pi/2; -2, 10, 0; -2, 20, 0; 13, 15, -pi;]'; % Camera Nominal State [x (m);y (m);theta (rad)]  
         m           = size(params.l_hat, 2); % Numbers of total cameras
         Measurable_R    = 20; % Markers within Measurable_R are measurable
-        e_va        = deg2rad(1); % angle measurement noise bound in rad
-        e_vr        = 0.05; % range measurement noise bound in rad
+        e_va        = deg2rad(5); % angle measurement noise bound in rad
+        e_vr        = 0.1; % range measurement noise bound in rad
         
         %% Simulation time sychronization and management
         simLoopDt   = 0.01; % [sec] time step of each simulation loop (other time constant should be interger times of this)
@@ -62,8 +62,8 @@ classdef params
                        -0.1*params.carLength,   0.5*params.carWidth; 
                         0.6*params.carLength,   0.0]'; % initial markers' position in ego car's frame: p_hat_rel(:,i) = [x;y]
         ref_marker  = 3; % index of referred marker for vehicle heading reconstruction
-        epsilon_Lt  = deg2rad(1); % in rad
-        epsilon_Lxy = 0.1; % in meter
+        epsilon_Lt  = deg2rad(5); % in rad
+        epsilon_Lxy = 0.2; % in meter
         epsilon_P   = 5; % in meter
         epsilon_rb  = 0.02; % rigid body uncertainty in [meter]
         dVFractionThreshold     = 0.01; % used to determine the termination of set update

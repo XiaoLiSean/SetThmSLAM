@@ -21,9 +21,9 @@ classdef EKFMarker < handle
             obj.e_w             = pr.e_w;
             % measurement noise covariance
             if obj.isStereoVision
-                obj.M   = diag([pr.e_va, pr.e_vr]);
+                obj.M   = diag([pr.e_va/3, pr.e_vr/3].^2);
             else
-                obj.M   = pr.e_va;
+                obj.M   = (pr.e_va/3)^2;
             end
             % initial mean and covariance
             obj.state   = sampledMarkerStates;
@@ -32,7 +32,7 @@ classdef EKFMarker < handle
             area        = volume(pr.P{ithMarker});
             radius      = sqrt(area/pi);
             sigma       = radius/3;
-            obj.Sigma   = diag([sigma^2, sigma^2]);
+            obj.Sigma   = diag([sigma, sigma].^2);
         end
         
         function randomWalk(obj)
@@ -63,7 +63,8 @@ classdef EKFMarker < handle
             v       = z - z_hat; % innovation
             obj.state   = obj.state + K*v;
             obj.Sigma   = (eye(2)-K*H)*obj.Sigma;
-            p_z         = mvnpdf(z, z_hat, Q); % Possibility for getting measurement z = {range, bearing}
+            % (Q+Q')/2 in case of asymmetric sigma due to numerical error
+            p_z         = mvnpdf(z, z_hat, (Q+Q')/2); % Possibility for getting measurement z = {range, bearing}
         end
     end
 end

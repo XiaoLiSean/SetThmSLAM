@@ -122,10 +122,10 @@
             cosSum          = zeros(1, obj.m);          
             for k = 1:obj.s
                 for i = 1:obj.n
-                    obj.mu.marker(:,i)      = obj.mu.marker(:,i) + obj.particles{k}.EKFMarker{i}.state / obj.n;
+                    obj.mu.marker(:,i)      = obj.mu.marker(:,i) + obj.particles{k}.EKFMarker{i}.state / obj.s;
                 end
                 for i = 1:obj.m
-                    obj.mu.camera(:,i)      = obj.mu.camera(:,i) + obj.particles{k}.camPoses(:,i) / obj.m;
+                    obj.mu.camera(:,i)      = obj.mu.camera(:,i) + obj.particles{k}.camPoses(:,i) / obj.s;
                     cosSum(1,i)             = cosSum(1,i) + cos(obj.particles{k}.camPoses(3,i));
                     sinSum(1,i)             = sinSum(1,i) + sin(obj.particles{k}.camPoses(3,i));
                 end
@@ -153,10 +153,10 @@
                 end
             end
             for i = 1:obj.n
-                obj.Sigma.marker{1,i}       = zeroMean.marker{1,i} * zeroMean.marker{1,i}' / obj.n;
+                obj.Sigma.marker{1,i}       = zeroMean.marker{1,i} * zeroMean.marker{1,i}' / obj.s;
             end
             for i = 1:obj.m
-                obj.Sigma.camera{1,i}       = zeroMean.camera{1,i} * zeroMean.camera{1,i}' / obj.m;
+                obj.Sigma.camera{1,i}       = zeroMean.camera{1,i} * zeroMean.camera{1,i}' / obj.s;
             end
         end
     end

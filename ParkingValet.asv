@@ -397,7 +397,7 @@ classdef ParkingValet < handle
                     obj.h_Lt{i}     = plot(x, y, 'b');
                 end
                 if obj.enableFastSLAM
-                    obj.h_Lxy_ell{i}    = draw_ellipse(obj.FastSLAM.mu.camera(1:2,i), obj.FastSLAM.Sigma.camera{1,i}, 9);
+                    obj.h_Lxy_ell{i}    = draw_ellipse(obj.FastSLAM.mu.camera(1:2,i), obj.FastSLAM.Sigma.camera{1,i}(1:2,1:2), 9);
                 end
             end
         end
