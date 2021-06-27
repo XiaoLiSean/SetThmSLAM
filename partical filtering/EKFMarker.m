@@ -14,7 +14,7 @@ classdef EKFMarker < handle
     end
     
     methods
-        function obj = EKFMarker(sampledCamStates, isStereoVision, pr, ithMarker)
+        function obj = EKFMarker(sampledMarkerStates, isStereoVision, pr, ithMarker)
             obj.isStereoVision  = isStereoVision;
             obj.Measurable_R    = pr.Measurable_R;
             obj.FoV             = pr.FoV;
@@ -26,7 +26,7 @@ classdef EKFMarker < handle
                 obj.M   = pr.e_va;
             end
             % initial mean and covariance
-            obj.state   = sampledCamStates;
+            obj.state   = sampledMarkerStates;
             % initialize the Sigma with 3-sigma circle bound the uncertanty
             % set of pr.P{iTHmarker}
             area        = volume(pr.P{ithMarker});

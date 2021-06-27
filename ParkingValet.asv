@@ -10,6 +10,9 @@ classdef ParkingValet < handle
         pathAnalyzer;
         lonController;
         SetSLAM;
+        FastSLAM;
+        enableFastSLAM;
+        enableSetSLAM;
         
         %% Measurement information
         isStereoVision;
@@ -45,36 +48,42 @@ classdef ParkingValet < handle
         h_pt; % handler for nominal vehicle heading
         h_Pxy; % handler for reconstructed uncertainty sets
         h_Pt; % handler for reconstructed uncertainty sets
+        h_P_ell; % handler for marker ellipse
+        h_Lxy_ell; % handler for Camera position ellipse
         
     end
     methods
         %% Initialization
-        function obj = ParkingValet(cameraType, enableRigidBodyConstraints, isReconstruction)
+        function obj = ParkingValet(cameraType, enableFastSLAM, enableSetSLAM, enableRigidBodyConstraints, isReconstruction)
             addpath('./util')
             addpath('./set operation')
+            addpath('./partical filtering')
             % -------------------------------------------------------------
+            obj.pr  = params;
             if strcmp(cameraType,'stereo')
                 obj.isStereoVision  = true;
+                obj.e_va            = obj.pr.e_va;
+                obj.e_vr            = obj.pr.e_vr;
             elseif strcmp(cameraType,'mono')
                 obj.isStereoVision  = false;
+                obj.e_va            = obj.pr.e_va;
             end
-            obj.Measurable_R    = pr.Measurable_R;
-            obj.p_hat_rel       = pr.p_hat_rel;
-            obj.p_car           = pr.p_0;
+            obj.Measurable_R    = obj.pr.Measurable_R;
+            obj.p_hat_rel       = obj.pr.p_hat_rel;
+            obj.p_car           = obj.pr.p_0;
             for i = 1:obj.pr.n
-                obj.p_hat{i}    = [pr.p_hat(1,i); pr.p_hat(2,i)];
+                obj.p_hat{i}    = [obj.pr.p_hat(1,i); obj.pr.p_hat(2,i)];
             end
             for i = 1:obj.pr.m
-                obj.lxy_hat{i}  = [pr.l_hat(1,i); pr.l_hat(2,i)];
-                obj.lt_hat{i}   = pr.l_hat(3,i);
+                obj.lxy_hat{i}  = [obj.pr.l_hat(1,i); obj.pr.l_hat(2,i)];
+                obj.lt_hat{i}   = obj.pr.l_hat(3,i);
             end
             obj.isReconstruction    = isReconstruction;
             if obj.isReconstruction
-                obj.reconRefIdx     = pr.ref_marker;
+                obj.reconRefIdx     = obj.pr.ref_marker;
                 obj.updateReconstructedNominalStates();
             end
             % -------------------------------------------------------------
-            obj.pr          = params;
             obj.lib         = demoEssentials;
             obj.vehicleDim  = obj.pr.carDims;
             obj.costmap             = obj.generateParkingSpaceCostmap(); % Generate and Visualize Parking Space with Cameras
@@ -89,7 +98,15 @@ classdef ParkingValet < handle
             obj.motionPlanner       = pathPlannerRRT(obj.costmap);
             obj.behavioralPlanner   = HelperBehavioralPlanner(obj.pr.routePlan, obj.pr.maxSteeringAngle);
             obj.lonController       = HelperLongitudinalController('SampleTime', obj.pr.sampleTime);
-            obj.SetSLAM             = SetThmSLAM(obj.pr, isStereoVision, enableRigidBodyConstraints, isReconstruction, obj.p_hat_rel);
+            % -------------------------------------------------------------
+            obj.enableSetSLAM       = enableSetSLAM;
+            obj.enableFastSLAM      = enableFastSLAM;
+            if enableSetSLAM
+                obj.SetSLAM             = SetThmSLAM(obj.pr, obj.isStereoVision, enableRigidBodyConstraints, isReconstruction, obj.p_hat_rel);
+            end
+            if enableFastSLAM
+                obj.FastSLAM            = FastSLAM(obj.pr, obj.isStereoVision);
+            end
         end
         
         %% Derived from Parking Valet Example
@@ -122,7 +139,12 @@ classdef ParkingValet < handle
                     obj.vehicleSim.updateKinematics(obj.pr.propTime);
                     currentPose = obj.vehicleSim.getVehiclePose();
                     currentVel  = obj.vehicleSim.getVehicleVelocity();
-                    obj.SetSLAM.propagateSets();
+                    if obj.enableSetSLAM
+                        obj.SetSLAM.propagateSets();
+                    end
+                    if obj.enableFastSLAM
+                        obj.FastSLAM.propagateParticles();
+                    end
                 end
                 % =====================================================
                 % Update Control Signal
@@ -139,17 +161,26 @@ classdef ParkingValet < handle
                         obj.updateReconstructedNominalStates()
                     end
                     obj.updateMeasurements();
-                    obj.SetSLAM.getMeasureAndMatching(obj.Ma, obj.Mr, obj.A_hat);
-                    obj.SetSLAM.updateSets();
+                    if obj.enableSetSLAM
+                        obj.SetSLAM.getMeasureAndMatching(obj.Ma, obj.Mr, obj.A_hat);
+                        obj.SetSLAM.updateSets();
+                    end
+                    if obj.enableFastSLAM
+                        obj.FastSLAM.getMeasureAndMatching(obj.Ma, obj.Mr, obj.A_hat);
+                        obj.FastSLAM.updateParticles();
+                    end
+
                 end
                 % =====================================================
                 % Update Plot and Check if nominal states are in corresponding sets
                 if mod(current_time, obj.pr.plotTime) < epsilon
                     obj.updateNominalStates(currentPose);
-                    obj.SetSLAM.eraseDrawing();
-                    obj.SetSLAM.drawSets();
+                    obj.eraseDrawing();
+                    obj.drawAll();
                     obj.vehicleSim.updatePlot();
-                    obj.check_guaranteed_property()
+                    if obj.enableSetSLAM
+                        obj.check_guaranteed_property()
+                    end
                 end
                 % =====================================================
                 % Check if the sub-goal is reached
@@ -253,9 +284,7 @@ classdef ParkingValet < handle
         end
         
         function [isMeasurable, alpha, range] = isMeasurable(obj, p, lxy, lt)
-            distance    = norm(p-lxy);
-            angle       = atan2(p(2)-lxy(2), p(1)-lxy(1)) - lt;
-            isMeasurable    = (distance <= obj.Measurable_R) & (abs(angle) <= 0.5*obj.FoV); 
+            [angle, distance, isMeasurable] = measureModel(p, [lxy; lt], obj.Measurable_R, obj.pr.FoV);
             noise_a     = -obj.e_va + 2*obj.e_va*rand();
             alpha       = angle + noise_a;
             range       = nan;
@@ -269,7 +298,7 @@ classdef ParkingValet < handle
         % update marker position p_hat using nominal par states p_car
         function updateNominalStates(obj, p_car)
             obj.p_car   = [p_car(1); p_car(2); deg2rad(p_car(3))];
-            for i = 1:obj.n
+            for i = 1:obj.pr.n
                 x_marker_i      = obj.p_car(1) + obj.p_hat_rel(1,i)*cos(obj.p_car(3)) - obj.p_hat_rel(2,i)*sin(obj.p_car(3));
                 y_marker_i      = obj.p_car(2) + obj.p_hat_rel(1,i)*sin(obj.p_car(3)) + obj.p_hat_rel(2,i)*cos(obj.p_car(3));
                 obj.p_hat{i}    = [x_marker_i; y_marker_i];
@@ -320,9 +349,9 @@ classdef ParkingValet < handle
         end
         
         function patch = get_wedge_patch(obj, i)
-            [x,y,theta,obj.pr.FoV,r] = deal(obj.pr.l_hat(1,i), obj.pr.l_hat(2,i), obj.pr.l_hat(3,i), obj.pr.FoV, obj.pr.Measurable_R);
-            theta_l     = theta - 0.5*obj.pr.FoV;
-            theta_u     = theta + 0.5*obj.pr.FoV;
+            [x,y,theta,FoV,r] = deal(obj.pr.l_hat(1,i), obj.pr.l_hat(2,i), obj.pr.l_hat(3,i), obj.pr.FoV, obj.pr.Measurable_R);
+            theta_l     = theta - 0.5*FoV;
+            theta_u     = theta + 0.5*FoV;
             thetas      = theta_l:pi/180:theta_u;
             patch       = [x;y];
             
@@ -332,55 +361,79 @@ classdef ParkingValet < handle
             end
         end
         % visualization: update and erase dynamic plot
-        function drawSets(obj)
+        function drawAll(obj)
             if obj.isReconstruction
-                obj.h_Pxy   = plot(obj.SetSLAM.Pxy);
+                if obj.enableSetSLAM
+                    obj.h_Pxy   = plot(obj.SetSLAM.Pxy);
+                    r           = norm(obj.pxy-obj.p_hat{obj.reconRefIdx}, 2);
+                    t1          = obj.SetSLAM.Pt.inf;
+                    t2          = obj.SetSLAM.Pt.sup;
+                    x           = [obj.pxy(1)+r*cos(t1), obj.pxy(1), obj.pxy(1)+r*cos(t2)];
+                    y           = [obj.pxy(2)+r*sin(t1), obj.pxy(2), obj.pxy(2)+r*sin(t2)];
+                    obj.h_Pt    = plot(x, y, 'b');
+                end
                 obj.h_pxy   = plot(obj.pxy(1), obj.pxy(2), 'r.', 'MarkerSize', 10);
-                r           = norm(obj.pxy-obj.p_hat{obj.reconRefIdx}, 2);
-                t1          = obj.SetSLAM.Pt.inf;
-                t2          = obj.SetSLAM.Pt.sup;
-                x           = [obj.pxy(1)+r*cos(t1), obj.pxy(1), obj.pxy(1)+r*cos(t2)];
-                y           = [obj.pxy(2)+r*sin(t1), obj.pxy(2), obj.pxy(2)+r*sin(t2)];
-                obj.h_Pt    = plot(x, y, 'b');
                 obj.h_pt    = plot([obj.pxy(1), obj.p_hat{obj.reconRefIdx}(1)], [obj.pxy(2), obj.p_hat{obj.reconRefIdx}(2)], 'r--');
             else
                 for i = 1:obj.pr.n
-                    obj.h_P{i}      = plot(obj..P{i});
+                    if obj.enableSetSLAM
+                        obj.h_P{i}      = plot(obj.SetSLAM.P{i});
+                    end
+                    if obj.enableFastSLAM
+                        obj.h_P_ell{i}  = draw_ellipse(obj.FastSLAM.mu.marker(:,i), obj.FastSLAM.Sigma.marker{1,i}, 9);
+                    end
                     obj.h_p_hat{i}  = plot(obj.p_hat{i}(1), obj.p_hat{i}(2), 'r.', 'MarkerSize', 10);   
                 end
             end
 
             for i = 1:obj.pr.m
-                obj.h_Lxy{i}    = plot(obj.SetSLAM.Lxy{i});
-                t1  = obj.SetSLAM.Lt{i}.inf;
-                t2  = obj.SetSLAM.Lt{i}.sup;
-                r   = 0.25*obj.Measurable_R; % line length to visualize the heading uncertainty
-                x   = [obj.lxy_hat{i}(1)+r*cos(t1), obj.lxy_hat{i}(1), obj.lxy_hat{i}(1)+r*cos(t2)];
-                y   = [obj.lxy_hat{i}(2)+r*sin(t1), obj.lxy_hat{i}(2), obj.lxy_hat{i}(2)+r*sin(t2)];
-                obj.h_Lt{i}     = plot(x, y, 'b');
+                if obj.enableSetSLAM
+                    obj.h_Lxy{i}    = plot(obj.SetSLAM.Lxy{i});
+                    t1  = obj.SetSLAM.Lt{i}.inf;
+                    t2  = obj.SetSLAM.Lt{i}.sup;
+                    r   = 0.25*obj.Measurable_R; % line length to visualize the heading uncertainty
+                    x   = [obj.lxy_hat{i}(1)+r*cos(t1), obj.lxy_hat{i}(1), obj.lxy_hat{i}(1)+r*cos(t2)];
+                    y   = [obj.lxy_hat{i}(2)+r*sin(t1), obj.lxy_hat{i}(2), obj.lxy_hat{i}(2)+r*sin(t2)];
+                    obj.h_Lt{i}     = plot(x, y, 'b');
+                end
+                if obj.enableFastSLAM
+                    obj.h_Lxy_ell{i}    = draw_ellipse(obj.FastSLAM.mu.camera(1:2,i), obj.FastSLAM.Sigma.camera{1,i}, 9);
+                end
             end
         end
         
         function eraseDrawing(obj)
-            if isempty(obj.h_Lxy)
+            if isempty(obj.h_p_hat)
                 return
-            end
+            end            
             
             if obj.isReconstruction
-                delete(obj.h_Pxy)
-                delete(obj.h_Pt)
+                if obj.enableSetSLAM
+                    delete(obj.h_Pxy)
+                    delete(obj.h_Pt)
+                end
                 delete(obj.h_pxy)
                 delete(obj.h_pt)
             else
                 for i = 1:obj.pr.n
-                    delete(obj.h_P{i})
+                    if obj.enableSetSLAM
+                        delete(obj.h_P{i})
+                    end
+                    if obj.enableFastSLAM
+                        delete(obj.h_P_ell{i})
+                    end
                     delete(obj.h_p_hat{i})
                 end
             end
             
             for i = 1:obj.pr.m
-                delete(obj.h_Lxy{i})
-                delete(obj.h_Lt{i})
+                if obj.enableSetSLAM
+                    delete(obj.h_Lxy{i})
+                    delete(obj.h_Lt{i})
+                end
+                if obj.enableFastSLAM
+                    delete(obj.h_Lxy_ell{i})
+                end
             end
         end
     end

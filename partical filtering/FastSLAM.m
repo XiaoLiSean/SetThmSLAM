@@ -25,8 +25,8 @@
             for k = 1:obj.s
                 % marker in 2D using EKF
                 for i = 1:obj.n
-                    sampledCamStates                = randPoint(pr.P{i});
-                    obj.particles{k}.EKFMarker{i}   = EKFMarker(sampledCamStates, isStereoVision, pr, i);
+                    sampledMarkerStates             = randPoint(pr.P{i});
+                    obj.particles{k}.EKFMarker{i}   = EKFMarker(sampledMarkerStates, isStereoVision, pr, i);
                 end
                 % Camera in 3D using partical filtering
                 for i = 1:obj.m
@@ -119,25 +119,29 @@
             obj.mu.marker   = zeros(2, obj.n);
             obj.mu.camera   = zeros(3, obj.m);
             sinSum          = zeros(1, obj.m);
-            cosSum          = zeros(1, obj.m);
-            zeroMean.marker = cell(1, obj.n); % used to calculate covariance
-            zeroMean.camera = cell(1, obj.m); % used to calculate covariance
+            cosSum          = zeros(1, obj.m);          
             for k = 1:obj.s
                 for i = 1:obj.n
                     obj.mu.marker(:,i)      = obj.mu.marker(:,i) + obj.particles{k}.EKFMarker{i}.state / obj.n;
-                    zeroMean.marker{1,i}    = zeros(2, obj.s);
                 end
                 for i = 1:obj.m
                     obj.mu.camera(:,i)      = obj.mu.camera(:,i) + obj.particles{k}.camPoses(:,i) / obj.m;
                     cosSum(1,i)             = cosSum(1,i) + cos(obj.particles{k}.camPoses(3,i));
                     sinSum(1,i)             = sinSum(1,i) + sin(obj.particles{k}.camPoses(3,i));
-                    zeroMean.camera{1,i}    = zeros(3, obj.s);
                 end
             end
             for i = 1:obj.m
                 obj.mu.camera(3,i)      = atan2(sinSum(1,i), cosSum(1,i));
             end
             % Compute covariance.
+            zeroMean.marker = cell(1, obj.n); % used to calculate covariance
+            zeroMean.camera = cell(1, obj.m); % used to calculate covariance
+            for i = 1:obj.n
+                zeroMean.marker{1,i}    = zeros(2, obj.s);
+            end
+            for i = 1:obj.m
+                zeroMean.camera{1,i}    = zeros(3, obj.s);
+            end
             obj.Sigma.marker    = cell(1, obj.n); 
             obj.Sigma.camera    = cell(1, obj.m);
             for k = 1:obj.s
@@ -152,7 +156,6 @@
                 obj.Sigma.marker{1,i}       = zeroMean.marker{1,i} * zeroMean.marker{1,i}' / obj.n;
             end
             for i = 1:obj.m
-                zeroMean.camera{1,i}(3,:)   = wrapToPi(zeroMean.camera{1,i}(3,:));
                 obj.Sigma.camera{1,i}       = zeroMean.camera{1,i} * zeroMean.camera{1,i}' / obj.m;
             end
         end

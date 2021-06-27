@@ -70,7 +70,7 @@ classdef params
         ring_sector_num         = 8; % sector the constraint ring to parts as convex polygons
         
         %% Variables for setting up particle filter
-        particle_num    = 50; % number of particles
+        particle_num    = 100; % number of particles
         
     end
     %% Uncertainty set Properties
