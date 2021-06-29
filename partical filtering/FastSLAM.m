@@ -5,14 +5,17 @@
         s; % Number of Particles
         particles; % particle with field of marker and camera
         weights; % Particle Weight
-        mu; % mean of camera states
-        Sigma; % variance of camera states  
+        mu; % mean of marker and camera states
+        Sigma; % variance of marker and camera states  
         
         %% Measurement and data association
         isStereoVision;
         Ma; % Ma{i} angle measurement set for camera i
         Mr; % Mr{i} range measurement set for camera i
         Au; % Au{i}{.} is matching solution matrices for measurement from camera i
+        
+        %% Bounded error for uncertainty sets
+        e_w; % control input p_hat{i}{k+1} - p_hat{i}{k} is bounded by e_w
     end
     
     methods
@@ -20,17 +23,18 @@
             obj.n       = pr.n;
             obj.m       = pr.m;
             obj.s       = pr.particle_num;
+            obj.e_w     = pr.e_w;
             obj.isStereoVision  = isStereoVision;
             obj.weights         = ones(obj.s,1)/obj.s;
             for k = 1:obj.s
                 % marker in 2D using EKF
                 for i = 1:obj.n
-                    sampledMarkerStates             = randPoint(pr.P{i});
-                    obj.particles{k}.EKFMarker{i}   = EKFMarker(sampledMarkerStates, isStereoVision, pr, i);
+                    obj.particles{k}.Marker{i}.state    = randPoint(pr.P{i});
                 end
                 % Camera in 3D using partical filtering
                 for i = 1:obj.m
-                    obj.particles{k}.camPoses(:,i)  = [randPoint(pr.Lxy{i}); randPoint(pr.Lt{i})];
+                    sampledCamStates                    = [randPoint(pr.Lxy{i}); randPoint(pr.Lt{i})];
+                    obj.particles{k}.EKFCamera{i}       = EKFCamera(sampledCamStates, isStereoVision, pr, i);
                 end
             end
             obj.updateMeanAndVariance()
@@ -39,11 +43,13 @@
         function propagateParticles(obj)
             for k = 1:obj.s
                 for i = 1:obj.n
-                    obj.particles{k}.EKFMarker{i}.randomWalk();
+                    noise_x         = rand()*2*obj.e_w(1) - obj.e_w(1);
+                    noise_y         = rand()*2*obj.e_w(2) - obj.e_w(2);
+                    obj.particles{k}.Marker{i}.state    = obj.particles{k}.Marker{i}.state + [noise_x; noise_y];
                 end
             end
         end
-        
+
         % we assume known association
         function updateParticles(obj)
             % Loop through m cameras
@@ -64,7 +70,7 @@
                     end
                     % update particle weights with measurement z
                     for k = 1:obj.s
-                        p_of_z  = obj.particles{k}.EKFMarker{j}.measurementUpdate(z, obj.particles{k}.camPoses(:,i));
+                        p_of_z  = obj.particles{k}.EKFCamera{i}.measurementUpdate(z, obj.particles{k}.Marker{j}.state);
                         obj.weights(k)  = obj.weights(k)*p_of_z; 
                     end
                 end
@@ -122,12 +128,12 @@
             cosSum          = zeros(1, obj.m);          
             for k = 1:obj.s
                 for i = 1:obj.n
-                    obj.mu.marker(:,i)      = obj.mu.marker(:,i) + obj.particles{k}.EKFMarker{i}.state / obj.s;
+                    obj.mu.marker(:,i)      = obj.mu.marker(:,i) + obj.particles{k}.Marker{i}.state / obj.s;
                 end
                 for i = 1:obj.m
-                    obj.mu.camera(:,i)      = obj.mu.camera(:,i) + obj.particles{k}.camPoses(:,i) / obj.s;
-                    cosSum(1,i)             = cosSum(1,i) + cos(obj.particles{k}.camPoses(3,i));
-                    sinSum(1,i)             = sinSum(1,i) + sin(obj.particles{k}.camPoses(3,i));
+                    obj.mu.camera(:,i)      = obj.mu.camera(:,i) + obj.particles{k}.EKFCamera{i}.state / obj.s;
+                    cosSum(1,i)             = cosSum(1,i) + cos(obj.particles{k}.EKFCamera{i}.state(3,1));
+                    sinSum(1,i)             = sinSum(1,i) + sin(obj.particles{k}.EKFCamera{i}.state(3,1));
                 end
             end
             for i = 1:obj.m
@@ -146,17 +152,18 @@
             obj.Sigma.camera    = cell(1, obj.m);
             for k = 1:obj.s
                 for i = 1:obj.n
-                    zeroMean.marker{1,i}(:,k)   = obj.particles{k}.EKFMarker{i}.state - obj.mu.marker(:,i);
+                    zeroMean.marker{1,i}(:,k)   = obj.particles{k}.Marker{i}.state - obj.mu.marker(:,i);
                 end
                 for i = 1:obj.m
-                    zeroMean.camera{1,i}(:,k)   = obj.particles{k}.camPoses(:,i) - obj.mu.camera(:,i);
+                    zeroMean.camera{1,i}(:,k)   = obj.particles{k}.EKFCamera{i}.state - obj.mu.camera(:,i);
                 end
             end
             for i = 1:obj.n
                 obj.Sigma.marker{1,i}       = zeroMean.marker{1,i} * zeroMean.marker{1,i}' / obj.s;
             end
             for i = 1:obj.m
-                obj.Sigma.camera{1,i}       = zeroMean.camera{1,i} * zeroMean.camera{1,i}' / obj.s;
+                FullCamSigma                = zeroMean.camera{1,i} * zeroMean.camera{1,i}' / obj.s;
+                obj.Sigma.camera{1,i}       = FullCamSigma(1:2,1:2);
             end
         end
     end

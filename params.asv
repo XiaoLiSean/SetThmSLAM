@@ -8,10 +8,7 @@ classdef params
         lotSize         = [3.5, 5.5]; % Individul parking lot is Dimension [width/x, height/y] in meter
         maxSpeed        = 5; % Maximum speed at the parking lot (m/sec)
         % note: the maxSpeed is not a hard constraint in the parking valet
-        % library, sometimes it will exceed the maxSpeed which will cause
-        % unwanted behavior and the nominal states will no longer contained
-        % in the corresponding sets. Therefore, a safty index is adopted in
-        % later define of e_w
+        % library, sometimes it will exceed the maxSpeed. Theref
         
         
         %% Map visualization setting

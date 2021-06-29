@@ -44,9 +44,9 @@ end;
 [x,y] = calculateEllipseXY(mu, Sigma, k2, Npoints);
 
 if nargin > 3
-  hp = plot(x,y,varargin{:},'linewidth',1.25);
+  hp = plot(x,y,varargin{:},'linewidth',1.25, 'color', 'g');
 else
-  hp = plot(x,y,'linewidth',1.25);
+  hp = plot(x,y,'linewidth',1.25, 'color', 'g');
 end
 
 if (nargout > 0)

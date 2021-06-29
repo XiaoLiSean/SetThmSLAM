@@ -50,6 +50,9 @@ classdef ParkingValet < handle
         h_Pt; % handler for reconstructed uncertainty sets
         h_P_ell; % handler for marker ellipse
         h_Lxy_ell; % handler for Camera position ellipse
+        h_Lt_ell; % handler for Camera heading interval
+        h_lxy_particle; % camera particles
+        h_p_particle; % marker particles
         
     end
     methods
@@ -139,6 +142,8 @@ classdef ParkingValet < handle
                     obj.vehicleSim.updateKinematics(obj.pr.propTime);
                     currentPose = obj.vehicleSim.getVehiclePose();
                     currentVel  = obj.vehicleSim.getVehicleVelocity();
+                    
+                    disp()
                     if obj.enableSetSLAM
                         obj.SetSLAM.propagateSets();
                     end
@@ -381,8 +386,13 @@ classdef ParkingValet < handle
                     end
                     if obj.enableFastSLAM
                         obj.h_P_ell{i}  = draw_ellipse(obj.FastSLAM.mu.marker(:,i), obj.FastSLAM.Sigma.marker{1,i}, 9);
+                        pos             = zeros(2, obj.FastSLAM.s);
+                        for k = 1:obj.FastSLAM.s
+                            pos(:,k)    = obj.FastSLAM.particles{k}.Marker{i}.state;
+                        end
+                        obj.h_p_particle{i}     = plot(pos(1,:), pos(2,:), 'g.');
                     end
-                    obj.h_p_hat{i}  = plot(obj.p_hat{i}(1), obj.p_hat{i}(2), 'r.', 'MarkerSize', 10);   
+                    obj.h_p_hat{i}  = plot(obj.p_hat{i}(1), obj.p_hat{i}(2), 'r.', 'MarkerSize', 15);   
                 end
             end
 
@@ -398,6 +408,17 @@ classdef ParkingValet < handle
                 end
                 if obj.enableFastSLAM
                     obj.h_Lxy_ell{i}    = draw_ellipse(obj.FastSLAM.mu.camera(1:2,i), obj.FastSLAM.Sigma.camera{1,i}(1:2,1:2), 9);
+                    t   = obj.FastSLAM.mu.camera(3,i);
+                    r   = 0.25*obj.Measurable_R; % line length to visualize the heading uncertainty
+                    lxy = obj.FastSLAM.mu.camera(1:2,i);
+                    x   = [lxy(1)+r*cos(t), lxy(1)];
+                    y   = [lxy(2)+r*sin(t), lxy(2)];
+                    obj.h_Lt_ell{i}     = plot(x, y, 'g');
+                    pos = zeros(2, obj.FastSLAM.s);
+                    for k = 1:obj.FastSLAM.s
+                        pos(:,k)    = obj.FastSLAM.particles{k}.EKFCamera{i}.state(1:2);
+                    end
+                    obj.h_lxy_particle{i}   = plot(pos(1,:), pos(2,:), 'gx');
                 end
             end
         end
@@ -421,6 +442,7 @@ classdef ParkingValet < handle
                     end
                     if obj.enableFastSLAM
                         delete(obj.h_P_ell{i})
+                        delete(obj.h_p_particle{i})
                     end
                     delete(obj.h_p_hat{i})
                 end
@@ -433,6 +455,8 @@ classdef ParkingValet < handle
                 end
                 if obj.enableFastSLAM
                     delete(obj.h_Lxy_ell{i})
+                    delete(obj.h_Lt_ell{i})
+                    delete(obj.h_lxy_particle{i})
                 end
             end
         end
