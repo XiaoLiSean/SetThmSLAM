@@ -3,9 +3,9 @@ import numpy as np
 import threading, serial, os, socket, copy
 from getchKeyPress import _Getch
 from lidar import RPLidarA1
+from params import LIDAR_PORT1
 
 print('Main thread: Initialize RPLidar...\n')
-LIDAR_PORT1 = '/dev/ttyUSB0'
 lidar = RPLidarA1(LIDAR_PORT1)
 
 # ------------------------------------------------------------------------------
