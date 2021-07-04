@@ -19,8 +19,8 @@ def calculate_distance_at_zero_deg(angles, distances):
 
 # ------------------------------------------------------------------------------
 if __name__ == '__main__':
-    # run()
-    print('sds')
+
+
     lidar = RPLidarA1(PORT_NAME)
     t1 = threading.Thread(target=rplidar_thread, args=(lidar, ))
     t1.start()
