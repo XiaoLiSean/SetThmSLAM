@@ -134,7 +134,7 @@ def obtainMaximumBound(dataSynchronized, dx, dy, theta):
 def saveDataAndCalibrationParam(dataSynchronized, dx, dy, theta, e_a, e_r, v_max):
     calibratedData = []
     for z in dataSynchronized:
-        calibratedData.append([z[1],z[2],z[5],z[6]])
+        calibratedData.append([z[0],z[1],z[2],z[5],z[6]])
     calibratedData = np.array(calibratedData)
     calibrationParams = np.array([dx, dy, theta, e_a, e_r, v_max]).reshape((1,6))
     np.savetxt('calibrationData/calibratedData.txt', calibratedData, delimiter=',')
@@ -142,7 +142,7 @@ def saveDataAndCalibrationParam(dataSynchronized, dx, dy, theta, e_a, e_r, v_max
 # ------------------------------------------------------------------------------
 def calibration(filename):
     recording = np.load(filename, allow_pickle=True)
-    dataSynchronized = [] # each row is a indivisual recording [gt_x, gt_y, x_measure, y_measure]
+    dataSynchronized = [] # each row is a indivisual recording [timestamp-t0, gt_x, gt_y, x_measure, y_measure, bearing, range]
     # --------------------------------------------------------------------------
     # Prepare data for calibration calculation
     for data in recording:
@@ -155,7 +155,11 @@ def calibration(filename):
         MarkerXs = np.multiply(markerMeasure['r']/1000, np.cos(np.deg2rad(markerMeasure['a'])))
         MarkerYs = np.multiply(markerMeasure['r']/1000, np.sin(np.deg2rad(markerMeasure['a'])))
         for i in range(len(MarkerXs)):
-            dataSynchronized.append([data['t'], groundTrue[0], groundTrue[1], MarkerXs[i], MarkerYs[i], np.deg2rad(markerMeasure['a'])[i], markerMeasure['r'][i]/1000])
+            if len(dataSynchronized) == 0:
+                t0 = data['t']
+            else:
+                t0 = dataSynchronized[0][0]
+            dataSynchronized.append([data['t']-t0, groundTrue[0], groundTrue[1], MarkerXs[i], MarkerYs[i], np.deg2rad(markerMeasure['a'])[i], markerMeasure['r'][i]/1000])
     # --------------------------------------------------------------------------
     # solve/resolve lidar pose use un-filtered/filtered dataSynchronized
     dx, dy, theta = solveLidarPose(dataSynchronized)

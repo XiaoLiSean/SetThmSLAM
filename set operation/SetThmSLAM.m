@@ -101,6 +101,15 @@ classdef SetThmSLAM < handle
             obj.updatePrevVolume();
         end
         
+        %% Set propagation by designated distance in [meter]
+        function propagateSetsWithDistance(obj, distance)
+            B_inf   = interval([-1;-1], [1;1]);
+            for i = 1:obj.n
+                obj.P{i}    = plus(obj.P{i}, mtimes(diag(distance), B_inf));
+            end
+            obj.updatePrevVolume();
+        end
+        
         %% Set update by measurement (iterative algorithm)
         function updateSets(obj)
             while true
