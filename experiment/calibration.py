@@ -79,10 +79,6 @@ def replayData(filename):
         plt.pause(0.1)
     plt.show()
 # ------------------------------------------------------------------------------
-def measurementFcn(x, dx, dy, theta):
-    print(x[0].shape)
-    return x[0]*np.cos(theta) + x[1]*np.sin(theta) + x[2]*dx + x[3]*dy
-
 def calibration(filename):
     recording = np.load(filename, allow_pickle=True)
     dataSynchronized = [] # each row is a indivisual recording [gt_x, gt_y, x_measure, y_measure]
@@ -121,13 +117,6 @@ def calibration(filename):
     theta = np.arctan2(lidar_pose[1], lidar_pose[0])
     dx = lidar_pose[2]
     dy = lidar_pose[3]
-    # uncomment for nonlinear optimization
-    # Xdata = np.array(A).reshape((4,len(b)))
-    # Ydata = np.array(b).reshape((len(b),))
-    # popt, pcov = curve_fit(measurementFcn, Xdata, Ydata)
-    # dx = popt[0]
-    # dy = popt[1]
-    # theta = popt[2]
     print("Calibration result: [dx, dy, theta]=({}[m],{}[m],{}[deg])".format(dx, dy, np.rad2deg(theta)))
     # --------------------------------------------------------------------------
     # Loop through data for visual check
@@ -135,7 +124,7 @@ def calibration(filename):
     for z in dataSynchronized:
         ax.clear()
         plt.plot(z[0], z[1], 'ro', markersize=3)
-        plt.plot(z[2]*np.cos(theta)-z[3]*np.sin(theta)+dx, z[2]*np.sin(theta)+z[3]*np.cos(theta)+dy, 'bx', markersize=1)
+        plt.plot(z[2]*np.cos(theta)-z[3]*np.sin(theta)+dx, z[2]*np.sin(theta)+z[3]*np.cos(theta)+dy, 'bx', markersize=3)
         ax.grid(True)
         ax.axis('equal')
         ax.set_xlim([-5, 5])
@@ -147,5 +136,5 @@ def calibration(filename):
 if __name__ == '__main__':
     filename = 'calibrateRaw.npy'
     # recordData(filename)
-    # replayData(filename)
+    replayData(filename)
     calibration(filename)
