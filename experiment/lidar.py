@@ -23,7 +23,7 @@ class RPLidarA1(object):
                 time.sleep(2) # solve error of "rplidar.RPLidarException: Wrong body size"
                 for scan in scans:
                     self.distances = [item[2] for item in scan]
-                    self.angles = [item[1] for item in scan]
+                    self.angles = [360-item[1] for item in scan] # make the measurement CCW while original one is clockwise
             except serial.serialutil.SerialException:
                 print('RPLidarA1 class: serial.serialutil.SerialException, common when shutting down.')
 

@@ -2,6 +2,7 @@
 # using collected measurements from both lidars and optitrack
 from lidar import RPLidarA1
 from optitrack import OptiTrack
+from scipy.optimize import curve_fit
 from params import CarToLidar1FoV, DisplacementErrorPercentage
 import matplotlib.pyplot as plt
 import numpy as np
@@ -78,6 +79,10 @@ def replayData(filename):
         plt.pause(0.1)
     plt.show()
 # ------------------------------------------------------------------------------
+def measurementFcn(x, dx, dy, theta):
+    print(x[0].shape)
+    return x[0]*np.cos(theta) + x[1]*np.sin(theta) + x[2]*dx + x[3]*dy
+
 def calibration(filename):
     recording = np.load(filename, allow_pickle=True)
     dataSynchronized = [] # each row is a indivisual recording [gt_x, gt_y, x_measure, y_measure]
@@ -111,12 +116,18 @@ def calibration(filename):
         b.append([x1])
         A.append([y2, x2, 0, 1])
         b.append([y1])
-    A = np.array(A)
-    b = np.array(b)
+    # least square optimization where the cosine and sine constraint is neglected
     lidar_pose = np.linalg.lstsq(A, b)[0]
     theta = np.arctan2(lidar_pose[1], lidar_pose[0])
     dx = lidar_pose[2]
     dy = lidar_pose[3]
+    # uncomment for nonlinear optimization
+    # Xdata = np.array(A).reshape((4,len(b)))
+    # Ydata = np.array(b).reshape((len(b),))
+    # popt, pcov = curve_fit(measurementFcn, Xdata, Ydata)
+    # dx = popt[0]
+    # dy = popt[1]
+    # theta = popt[2]
     print("Calibration result: [dx, dy, theta]=({}[m],{}[m],{}[deg])".format(dx, dy, np.rad2deg(theta)))
     # --------------------------------------------------------------------------
     # Loop through data for visual check
