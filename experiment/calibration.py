@@ -1,7 +1,7 @@
 # this program is used to calibrate the lidars' pose [x,y,theta]
 # using collected measurements from both lidars and optitrack
-from lidar import RPLidarA1
-from optitrack import OptiTrack
+from sensors.lidar import RPLidarA1
+from sensors.optitrack import OptiTrack
 from scipy.optimize import curve_fit
 from params import CarToLidar1FoV, PosErrorMax
 import matplotlib.pyplot as plt
@@ -125,8 +125,8 @@ def saveDataAndCalibrationParam(dataSynchronized, dx, dy, theta, e_a, e_r):
         calibratedData.append([z[0],z[1],z[-2],z[-1]])
     calibratedData = np.array(calibratedData)
     calibrationParams = np.array([dx, dy, theta, e_a, e_r]).reshape((1,5))
-    np.savetxt('calibratedData.txt', calibratedData, delimiter=',')
-    np.savetxt('calibrationParams.txt', calibrationParams, delimiter=',')
+    np.savetxt('calibrationData/calibratedData.txt', calibratedData, delimiter=',')
+    np.savetxt('calibrationData/calibrationParams.txt', calibrationParams, delimiter=',')
 # ------------------------------------------------------------------------------
 def calibration(filename):
     recording = np.load(filename, allow_pickle=True)
@@ -177,7 +177,7 @@ def calibration(filename):
 
 # ==============================================================================
 if __name__ == '__main__':
-    filename = 'calibrateRaw.npy'
+    filename = 'calibrationData/calibrateRaw.npy'
     # recordData(filename)
     # replayData(filename)
     calibration(filename)

@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import threading, serial, os, socket, copy
-from getchKeyPress import _Getch
-from lidar import RPLidarA1
+from sensors.getchKeyPress import _Getch
+from sensors.lidar import RPLidarA1
 from params import LIDAR_PORT1
 
 print('Main thread: Initialize RPLidar...\n')

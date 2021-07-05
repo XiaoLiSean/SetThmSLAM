@@ -1,4 +1,4 @@
-from NatNetClient import NatNetClient
+from sensors.NatNetClient import NatNetClient
 from params import ip_win10, ip_ubuntu_pc
 import time, copy
 import numpy as np
