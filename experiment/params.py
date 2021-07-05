@@ -15,3 +15,4 @@ LIDAR_PORT1 = '/dev/ttyUSB0'
 # [t1, t2], rmax: car is in the lidar field of view [t1,t2] within range of rmax
 # where the lidar measurements is in [0, 360 deg]
 CarToLidar1FoV = dict(FoVs=[[0,90], [270, 360]], rmax=1000)
+DisplacementErrorPercentage = 0.7 # used to filter the lidar measurement
