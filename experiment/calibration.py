@@ -6,7 +6,7 @@ from scipy.optimize import curve_fit
 from params import CarToLidar1FoV, PosErrorMax
 import matplotlib.pyplot as plt
 import numpy as np
-import copy
+import copy, time
 # ==============================================================================
 def isInFoV(angle, FoV):
     isIn = False
@@ -48,8 +48,8 @@ def recordData(filename):
         plt.plot(MarkerXs, MarkerYs, 'rx', markersize=3)
 
         ax.grid(True)
-        plt.pause(0.1)
-        datapoint = dict(gt=groundTrue, z=measurements)
+        plt.pause(0.01)
+        datapoint = dict(t=time.time(), gt=groundTrue, z=measurements)
         recording.append(copy.deepcopy(datapoint))
         np.save(filename, recording)
     plt.show()
@@ -76,7 +76,7 @@ def replayData(filename):
         ax.axis('equal')
         ax.set_xlim([-5, 5])
         ax.set_ylim([-5, 5])
-        plt.pause(0.1)
+        plt.pause(0.01)
     plt.show()
 # ==============================================================================
 def solveLidarPose(dataSynchronized):
@@ -88,10 +88,10 @@ def solveLidarPose(dataSynchronized):
     A = []
     b = []
     for data in dataSynchronized:
-        x1 = data[0]
-        y1 = data[1]
-        x2 = data[2]
-        y2 = data[3]
+        x1 = data[1]
+        y1 = data[2]
+        x2 = data[3]
+        y2 = data[4]
         A.append([x2, -y2, 1, 0])
         b.append([x1])
         A.append([y2, x2, 0, 1])
@@ -103,28 +103,40 @@ def solveLidarPose(dataSynchronized):
     dy = lidar_pose[3]
     return dx, dy, theta
 # ------------------------------------------------------------------------------
-def obtainMaxMeasurementError(dataSynchronized, dx, dy, theta):
+def obtainMaximumBound(dataSynchronized, dx, dy, theta):
     e_a = 0
     e_r = 0
-    for z in dataSynchronized:
-        x_gt = z[0]
-        y_gt = z[1]
-        bearing_z = z[4]
-        range_z = z[5]
+    v_max = 0
+    for idx, z in enumerate(dataSynchronized):
+        x_gt = z[1]
+        y_gt = z[2]
+        bearing_z = z[5]
+        range_z = z[6]
         bearing_gt = np.arctan2(y_gt-dy, x_gt-dx) - theta
         range_gt = np.sqrt((y_gt-dy)**2+(x_gt-dx)**2)
         if abs(bearing_gt-bearing_z) > e_a:
             e_a = abs(bearing_gt-bearing_z)
         if abs(range_gt-range_z) > e_r:
             e_r = abs(range_gt-range_z)
-    return e_a, e_r
+        if idx > 0:
+            x_gt_prev = dataSynchronized[idx-1][1]
+            y_gt_prev = dataSynchronized[idx-1][2]
+            displacement = np.sqrt((x_gt_prev-x_gt)**2+(y_gt_prev-y_gt)**2)
+            dt = z[0] - dataSynchronized[idx-1][0]
+            speed = displacement / dt
+            if speed < 0:
+                print("Get Negative speed with dt = {} [sec]".format(dt))
+                exit()
+            if speed > v_max:
+                v_max = speed
+    return e_a, e_r, v_max
 # ------------------------------------------------------------------------------
-def saveDataAndCalibrationParam(dataSynchronized, dx, dy, theta, e_a, e_r):
+def saveDataAndCalibrationParam(dataSynchronized, dx, dy, theta, e_a, e_r, v_max):
     calibratedData = []
     for z in dataSynchronized:
-        calibratedData.append([z[0],z[1],z[-2],z[-1]])
+        calibratedData.append([z[1],z[2],z[5],z[6]])
     calibratedData = np.array(calibratedData)
-    calibrationParams = np.array([dx, dy, theta, e_a, e_r]).reshape((1,5))
+    calibrationParams = np.array([dx, dy, theta, e_a, e_r, v_max]).reshape((1,6))
     np.savetxt('calibrationData/calibratedData.txt', calibratedData, delimiter=',')
     np.savetxt('calibrationData/calibrationParams.txt', calibrationParams, delimiter=',')
 # ------------------------------------------------------------------------------
@@ -143,31 +155,31 @@ def calibration(filename):
         MarkerXs = np.multiply(markerMeasure['r']/1000, np.cos(np.deg2rad(markerMeasure['a'])))
         MarkerYs = np.multiply(markerMeasure['r']/1000, np.sin(np.deg2rad(markerMeasure['a'])))
         for i in range(len(MarkerXs)):
-            dataSynchronized.append([groundTrue[0], groundTrue[1], MarkerXs[i], MarkerYs[i], np.deg2rad(markerMeasure['a'])[i], markerMeasure['r'][i]/1000])
+            dataSynchronized.append([data['t'], groundTrue[0], groundTrue[1], MarkerXs[i], MarkerYs[i], np.deg2rad(markerMeasure['a'])[i], markerMeasure['r'][i]/1000])
     # --------------------------------------------------------------------------
     # solve/resolve lidar pose use un-filtered/filtered dataSynchronized
     dx, dy, theta = solveLidarPose(dataSynchronized)
     tmp_dataSynchronized = copy.deepcopy(dataSynchronized)
     for z in tmp_dataSynchronized:
-        pos_opti = np.array([z[0], z[1]]).reshape((2,1))
-        pos_lidar = np.array([z[2]*np.cos(theta)-z[3]*np.sin(theta)+dx, z[2]*np.sin(theta)+z[3]*np.cos(theta)+dy]).reshape((2,1))
+        pos_opti = np.array([z[1], z[2]]).reshape((2,1))
+        pos_lidar = np.array([z[3]*np.cos(theta)-z[4]*np.sin(theta)+dx, z[3]*np.sin(theta)+z[4]*np.cos(theta)+dy]).reshape((2,1))
         l2error = np.linalg.norm(pos_opti-pos_lidar, ord=2)
         if l2error > PosErrorMax:
             dataSynchronized.remove(z)
     dx, dy, theta = solveLidarPose(dataSynchronized)
-    e_a, e_r = obtainMaxMeasurementError(dataSynchronized, dx, dy, theta)
-    saveDataAndCalibrationParam(dataSynchronized, dx, dy, theta, e_a, e_r)
+    e_a, e_r, v_max = obtainMaximumBound(dataSynchronized, dx, dy, theta)
+    saveDataAndCalibrationParam(dataSynchronized, dx, dy, theta, e_a, e_r, v_max)
     print('-----'*20)
     print("Calibration result: [dx, dy, theta] = ({}[m],{}[m],{}[deg])".format(dx, dy, np.rad2deg(theta)))
-    print("Maximum error bound: bearing {}[deg]; range {}[m]".format(np.rad2deg(e_a), e_r))
+    print("Maximum error/speed bound: bearing {}[deg]; range {}[m]; speed {}[m/s]".format(np.rad2deg(e_a), e_r, v_max))
     print('-----'*20)
     # --------------------------------------------------------------------------
     # Loop through data for visual check
     ax = plt.subplot(111)
     for z in dataSynchronized:
         ax.clear()
-        plt.plot(z[0], z[1], 'ro', markersize=3)
-        plt.plot(z[2]*np.cos(theta)-z[3]*np.sin(theta)+dx, z[2]*np.sin(theta)+z[3]*np.cos(theta)+dy, 'bx', markersize=3)
+        plt.plot(z[1], z[2], 'ro', markersize=3)
+        plt.plot(z[3]*np.cos(theta)-z[4]*np.sin(theta)+dx, z[3]*np.sin(theta)+z[4]*np.cos(theta)+dy, 'bx', markersize=3)
         ax.grid(True)
         ax.axis('equal')
         ax.set_xlim([-5, 5])
