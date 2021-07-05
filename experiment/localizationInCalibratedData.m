@@ -17,7 +17,7 @@ plot(pr.l_hat(1), pr.l_hat(2), 'rx', 'MarkerSize', 15);
 plot([pr.l_hat(1), pr.l_hat(1)+0.25*pr.Measurable_R*cos(pr.l_hat(3))],...
      [pr.l_hat(2), pr.l_hat(2)+0.25*pr.Measurable_R*sin(pr.l_hat(3))], 'r--');
 while true
-    % read single data at a certain timestamp from recorded scream
+    %% read single data at a certain timestamp from recorded scream
     newline     = fgetl(fid);
     if ~ischar(newline)
       break; 
@@ -27,13 +27,15 @@ while true
     p_hat   = [str2double(data{2}); str2double(data{3})];
     bearing = str2double(data{4});
     range   = str2double(data{5});
-    % SetSLAM localization
-    distance    = dt*pr.maxSpeed; 
+    %% SetSLAM localization
+    tic
+    distance    = dt*pr.maxSpeed;
 	SetSLAM.propagateSetsWithDistance(distance);
     [Ma, Mr, A_hat]     = formulateMeasurements(bearing, range);
     SetSLAM.getMeasureAndMatching(Ma, Mr, A_hat);
     SetSLAM.updateSets();
-    % visualization
+    toc
+    %% visualization
     if dt ~= 0
         delete(h1);
         delete(h2);
