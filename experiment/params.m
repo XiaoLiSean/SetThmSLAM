@@ -19,8 +19,8 @@ classdef params
         P; % Markers' position: P{i} in 2D
         
         %% uncertainty set initialization dimension
-        epsilon_Lt  = deg2rad(1); % in rad
-        epsilon_Lxy = 0.05; % in meter
+        epsilon_Lt  = deg2rad(0.5); % in rad
+        epsilon_Lxy = 0.01; % in meter
         epsilon_P   = 1; % in meter
         dVFractionThreshold     = 0.01; % used to determine the termination of set update
         ring_sector_num         = 8; % sector the constraint ring to parts as convex polygons
