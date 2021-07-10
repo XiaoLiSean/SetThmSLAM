@@ -1,9 +1,12 @@
+# ==============================================================================
 # this program is used to calibrate the lidars' pose [x,y,theta]
 # using collected measurements from both lidars and optitrack
+# ==============================================================================
 '''Important Note!!!: as the new RPLidarA1M8R6 has different usb adaptor'
 please first connect RPLidarA1M8R5 through usb wire to the PC which can activate
 the dev/ttyUSB0 port. Afterwards (only by this means), RPLidarA1M8R6 connecting
 to the PC can activate ttyUSB1 and ttyUSB2'''
+# ==============================================================================
 from sensors.lidar import RPLidarA1
 from sensors.optitrack import OptiTrack
 from scipy.optimize import curve_fit
@@ -31,8 +34,8 @@ def filterMeasurement(z, CarToLidarFoV):
 # ==============================================================================
 def recordData(filename):
     recording = []
-    # optitrack = OptiTrack()
-    # optitrack.startOptiTrackThreaded()
+    optitrack = OptiTrack()
+    optitrack.startOptiTrackThreaded()
     lidars = []
     for lidar_port in LIDAR_PORTs:
         lidars.append(RPLidarA1(lidar_port))
@@ -40,16 +43,20 @@ def recordData(filename):
 
     fig, axs = plt.subplots(len(LIDAR_PORTs))
     while True:
-        # groundTrue = copy.deepcopy(optitrack.position)
-        # plt.plot(groundTrue[0], groundTrue[1], 'ro', markersize=3)
+        groundTrue = copy.deepcopy(optitrack.position)
+        measurements = []
         for idx,lidar in enumerate(lidars):
             axs[idx].clear()
-            measurements = copy.deepcopy(dict(r=np.array(lidar.distances), a=lidar.angles))
-            Xs = np.multiply(measurements['r']/1000, np.cos(np.deg2rad(measurements['a'])))
-            Ys = np.multiply(measurements['r']/1000, np.sin(np.deg2rad(measurements['a'])))
+
+            axs[idx].plot(groundTrue[0], groundTrue[1], 'ro', markersize=3)
+
+            measurement = dict(r=np.array(lidar.distances), a=lidar.angles)
+            measurements.append(copy.deepcopy(measurement))
+            Xs = np.multiply(measurement['r']/1000, np.cos(np.deg2rad(measurement['a'])))
+            Ys = np.multiply(measurement['r']/1000, np.sin(np.deg2rad(measurement['a'])))
             axs[idx].plot(Xs, Ys, 'bo', markersize=1)
 
-            markerMeasure = filterMeasurement(measurements, CarToLidarFoVs[idx])
+            markerMeasure = filterMeasurement(measurement, CarToLidarFoVs[idx])
             MarkerXs = np.multiply(markerMeasure['r']/1000, np.cos(np.deg2rad(markerMeasure['a'])))
             MarkerYs = np.multiply(markerMeasure['r']/1000, np.sin(np.deg2rad(markerMeasure['a'])))
             axs[idx].plot(MarkerXs, MarkerYs, 'rx', markersize=3)
@@ -59,33 +66,35 @@ def recordData(filename):
             axs[idx].axis('equal')
 
         plt.pause(0.01)
-        # datapoint = dict(t=time.time(), gt=groundTrue, z=measurements)
-        # recording.append(copy.deepcopy(datapoint))
-        # np.save(filename, recording)
+        datapoint = dict(t=time.time(), gt=groundTrue, z=measurements)
+        recording.append(copy.deepcopy(datapoint))
+        np.save(filename, recording)
     plt.show()
 # ==============================================================================
 def replayData(filename):
     recording = np.load(filename, allow_pickle=True)
-    ax = plt.subplot(111)
+    fig, axs = plt.subplots(len(LIDAR_PORTs))
     for data in recording:
-        ax.clear()
         groundTrue = data['gt']
-        plt.plot(groundTrue[0], groundTrue[1], 'ro', markersize=3)
+        for idx in range(len(LIDAR_PORTs)):
+            axs[idx].clear()
 
-        measurements = data['z']
-        Xs = np.multiply(measurements['r']/1000, np.cos(np.deg2rad(measurements['a'])))
-        Ys = np.multiply(measurements['r']/1000, np.sin(np.deg2rad(measurements['a'])))
-        plt.plot(Xs, Ys, 'bo', markersize=1)
+            axs[idx].plot(groundTrue[0], groundTrue[1], 'ro', markersize=3)
 
-        markerMeasure = filterMeasurement(measurements)
-        MarkerXs = np.multiply(markerMeasure['r']/1000, np.cos(np.deg2rad(markerMeasure['a'])))
-        MarkerYs = np.multiply(markerMeasure['r']/1000, np.sin(np.deg2rad(markerMeasure['a'])))
-        plt.plot(MarkerXs, MarkerYs, 'rx', markersize=3)
+            measurement = data['z'][idx]
+            Xs = np.multiply(measurement['r']/1000, np.cos(np.deg2rad(measurement['a'])))
+            Ys = np.multiply(measurement['r']/1000, np.sin(np.deg2rad(measurement['a'])))
+            axs[idx].plot(Xs, Ys, 'bo', markersize=1)
 
-        ax.grid(True)
-        ax.axis('equal')
-        ax.set_xlim([-5, 5])
-        ax.set_ylim([-5, 5])
+            markerMeasure = filterMeasurement(measurement, CarToLidarFoVs[idx])
+            MarkerXs = np.multiply(markerMeasure['r']/1000, np.cos(np.deg2rad(markerMeasure['a'])))
+            MarkerYs = np.multiply(markerMeasure['r']/1000, np.sin(np.deg2rad(markerMeasure['a'])))
+            axs[idx].plot(MarkerXs, MarkerYs, 'rx', markersize=3)
+
+            axs[idx].grid(True)
+            axs[idx].axis('equal')
+            axs[idx].set_xlim([-5, 5])
+            axs[idx].set_ylim([-5, 5])
         plt.pause(0.01)
     plt.show()
 # ==============================================================================
@@ -141,7 +150,7 @@ def obtainMaximumBound(dataSynchronized, dx, dy, theta):
                 v_max = speed
     return e_a, e_r, v_max
 # ------------------------------------------------------------------------------
-def saveDataAndCalibrationParam(dataSynchronized, dx, dy, theta, e_a, e_r, v_max):
+def saveDataAndCalibrationParam(dataSynchronized, dxs, dys, thetas, e_as, e_rs, v_maxs):
     calibratedData = []
     for z in dataSynchronized:
         calibratedData.append([z[0],z[1],z[2],z[5],z[6]])
@@ -153,40 +162,42 @@ def saveDataAndCalibrationParam(dataSynchronized, dx, dy, theta, e_a, e_r, v_max
 def calibration(filename):
     recording = np.load(filename, allow_pickle=True)
     dataSynchronized = [] # each row is a indivisual recording [timestamp-t0, gt_x, gt_y, x_measure, y_measure, bearing, range]
+    dxs, dys, thetas, e_as, e_rs, v_maxs = ([] for i in range(6))
     # --------------------------------------------------------------------------
-    # Prepare data for calibration calculation
-    for data in recording:
-        groundTrue = data['gt']
-        markerMeasure = filterMeasurement(data['z'])
-        # case the lidar or optitrack measurement is empty
-        if len(groundTrue)*len(markerMeasure['r']) == 0:
-            continue
-        # append useful data to dataSynchronized for later calibration
-        MarkerXs = np.multiply(markerMeasure['r']/1000, np.cos(np.deg2rad(markerMeasure['a'])))
-        MarkerYs = np.multiply(markerMeasure['r']/1000, np.sin(np.deg2rad(markerMeasure['a'])))
-        for i in range(len(MarkerXs)):
-            if len(dataSynchronized) == 0:
-                t0 = data['t']
-            else:
-                t0 = dataSynchronized[0][0]
-            dataSynchronized.append([data['t']-t0, groundTrue[0], groundTrue[1], MarkerXs[i], MarkerYs[i], np.deg2rad(markerMeasure['a'])[i], markerMeasure['r'][i]/1000])
-    # --------------------------------------------------------------------------
-    # solve/resolve lidar pose use un-filtered/filtered dataSynchronized
-    dx, dy, theta = solveLidarPose(dataSynchronized)
-    tmp_dataSynchronized = copy.deepcopy(dataSynchronized)
-    for z in tmp_dataSynchronized:
-        pos_opti = np.array([z[1], z[2]]).reshape((2,1))
-        pos_lidar = np.array([z[3]*np.cos(theta)-z[4]*np.sin(theta)+dx, z[3]*np.sin(theta)+z[4]*np.cos(theta)+dy]).reshape((2,1))
-        l2error = np.linalg.norm(pos_opti-pos_lidar, ord=2)
-        if l2error > PosErrorMax:
-            dataSynchronized.remove(z)
-    dx, dy, theta = solveLidarPose(dataSynchronized)
-    e_a, e_r, v_max = obtainMaximumBound(dataSynchronized, dx, dy, theta)
-    saveDataAndCalibrationParam(dataSynchronized, dx, dy, theta, e_a, e_r, v_max)
-    print('-----'*20)
-    print("Calibration result: [dx, dy, theta] = ({}[m],{}[m],{}[deg])".format(dx, dy, np.rad2deg(theta)))
-    print("Maximum error/speed bound: bearing {}[deg]; range {}[m]; speed {}[m/s]".format(np.rad2deg(e_a), e_r, v_max))
-    print('-----'*20)
+    for lidar_i in range(len(recording[0]['z'])):
+        # Prepare data for calibration calculation
+        for data in recording:
+            groundTrue = data['gt']
+            markerMeasure = filterMeasurement(data['z'][lidar_i], CarToLidarFoVs[lidar_i])
+            # case the lidar or optitrack measurement is empty
+            if len(groundTrue)*len(markerMeasure['r']) == 0:
+                continue
+            # append useful data to dataSynchronized for later calibration
+            MarkerXs = np.multiply(markerMeasure['r']/1000, np.cos(np.deg2rad(markerMeasure['a'])))
+            MarkerYs = np.multiply(markerMeasure['r']/1000, np.sin(np.deg2rad(markerMeasure['a'])))
+            for i in range(len(MarkerXs)):
+                if len(dataSynchronized) == 0:
+                    t0 = data['t']
+                else:
+                    t0 = dataSynchronized[0][0]
+                dataSynchronized.append([data['t']-t0, groundTrue[0], groundTrue[1], MarkerXs[i], MarkerYs[i], np.deg2rad(markerMeasure['a'])[i], markerMeasure['r'][i]/1000])
+        # --------------------------------------------------------------------------
+        # solve/resolve lidar pose use un-filtered/filtered dataSynchronized
+        dx, dy, theta = solveLidarPose(dataSynchronized)
+        tmp_dataSynchronized = copy.deepcopy(dataSynchronized)
+        for z in tmp_dataSynchronized:
+            pos_opti = np.array([z[1], z[2]]).reshape((2,1))
+            pos_lidar = np.array([z[3]*np.cos(theta)-z[4]*np.sin(theta)+dx, z[3]*np.sin(theta)+z[4]*np.cos(theta)+dy]).reshape((2,1))
+            l2error = np.linalg.norm(pos_opti-pos_lidar, ord=2)
+            if l2error > PosErrorMax:
+                dataSynchronized.remove(z)
+        dx, dy, theta = solveLidarPose(dataSynchronized)
+        e_a, e_r, v_max = obtainMaximumBound(dataSynchronized, dx, dy, theta)
+        saveDataAndCalibrationParam(dataSynchronized, dx, dy, theta, e_a, e_r, v_max)
+        print('-----'*20)
+        print("Calibration result: [dx, dy, theta] = ({}[m],{}[m],{}[deg])".format(dx, dy, np.rad2deg(theta)))
+        print("Maximum error/speed bound: bearing {}[deg]; range {}[m]; speed {}[m/s]".format(np.rad2deg(e_a), e_r, v_max))
+        print('-----'*20)
     # --------------------------------------------------------------------------
     # Loop through data for visual check
     ax = plt.subplot(111)
@@ -204,6 +215,6 @@ def calibration(filename):
 # ==============================================================================
 if __name__ == '__main__':
     filename = 'calibrationData/calibrateRaw.npy'
-    recordData(filename)
+    # recordData(filename)
     # replayData(filename)
-    # calibration(filename)
+    calibration(filename)

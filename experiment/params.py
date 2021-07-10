@@ -3,7 +3,7 @@
 # ==============================================================================
 # optitrack communication ip (win10 is the server, the ubuntu receiving data is client)
 # ==============================================================================
-ip_win10 = '192.168.1.5'
+ip_win10 = '192.168.1.2'
 ip_ubuntu_pc = '192.168.1.3'
 # ==============================================================================
 # Local lidar ports
@@ -18,8 +18,8 @@ LIDAR_PORTs = [LIDAR_PORT1, LIDAR_PORT2, LIDAR_PORT3]
 # ==============================================================================
 # [t1, t2], rmax: car is in the lidar field of view [t1,t2] within range of rmax
 # where the lidar measurements is in [0, 360 deg]
-CarToLidar1FoV = dict(FoVs=[[0,90], [270, 360]], rmax=1000)
-CarToLidar2FoV = dict(FoVs=[[0,90], [270, 360]], rmax=1000)
-CarToLidar3FoV = dict(FoVs=[[0,90], [270, 360]], rmax=1000)
+CarToLidar1FoV = dict(FoVs=[[0,60], [300, 360]], rmax=1500)
+CarToLidar2FoV = dict(FoVs=[[0,60], [300, 360]], rmax=1500)
+CarToLidar3FoV = dict(FoVs=[[0,60], [300, 360]], rmax=1500)
 CarToLidarFoVs = [CarToLidar1FoV, CarToLidar2FoV, CarToLidar3FoV]
 PosErrorMax = 0.05 # maximum position l2 error between lidar and optitrack estimation in [meter]
