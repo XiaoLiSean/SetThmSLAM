@@ -1,24 +1,28 @@
 # this program is used to calibrate the lidars' pose [x,y,theta]
 # using collected measurements from both lidars and optitrack
+'''Important Note!!!: as the new RPLidarA1M8R6 has different usb adaptor'
+please first connect RPLidarA1M8R5 through usb wire to the PC which can activate
+the dev/ttyUSB0 port. Afterwards (only by this means), RPLidarA1M8R6 connecting
+to the PC can activate ttyUSB1 and ttyUSB2'''
 from sensors.lidar import RPLidarA1
 from sensors.optitrack import OptiTrack
 from scipy.optimize import curve_fit
-from params import CarToLidar1FoV, PosErrorMax
+from params import LIDAR_PORTs, CarToLidarFoVs, PosErrorMax
 import matplotlib.pyplot as plt
 import numpy as np
 import copy, time
 # ==============================================================================
-def isInFoV(angle, FoV):
+def isInFoV(angle, CarToLidarFoV):
     isIn = False
-    for FoV in CarToLidar1FoV['FoVs']:
+    for FoV in CarToLidarFoV['FoVs']:
         if angle > FoV[0] and angle < FoV[1]:
             isIn = True
     return isIn
 
-def filterMeasurement(z):
+def filterMeasurement(z, CarToLidarFoV):
     filteredMeasurements = dict(r=[],a=[])
     for i in range(len(z['r'])):
-        if isInFoV(z['a'][i], CarToLidar1FoV) and z['r'][i] < CarToLidar1FoV['rmax']:
+        if isInFoV(z['a'][i], CarToLidarFoV) and z['r'][i] < CarToLidarFoV['rmax']:
             filteredMeasurements['a'].append(z['a'][i])
             filteredMeasurements['r'].append(z['r'][i])
     filteredMeasurements['r'] = np.array(filteredMeasurements['r'])
@@ -27,31 +31,37 @@ def filterMeasurement(z):
 # ==============================================================================
 def recordData(filename):
     recording = []
-    optitrack = OptiTrack()
-    optitrack.startOptiTrackThreaded()
-    lidar = RPLidarA1()
-    lidar.startLidarThreaded()
-    ax = plt.subplot(111)
+    # optitrack = OptiTrack()
+    # optitrack.startOptiTrackThreaded()
+    lidars = []
+    for lidar_port in LIDAR_PORTs:
+        lidars.append(RPLidarA1(lidar_port))
+        lidars[-1].startLidarThreaded()
+
+    fig, axs = plt.subplots(len(LIDAR_PORTs))
     while True:
-        ax.clear()
-        groundTrue = copy.deepcopy(optitrack.position)
-        plt.plot(groundTrue[0], groundTrue[1], 'ro', markersize=3)
+        # groundTrue = copy.deepcopy(optitrack.position)
+        # plt.plot(groundTrue[0], groundTrue[1], 'ro', markersize=3)
+        for idx,lidar in enumerate(lidars):
+            axs[idx].clear()
+            measurements = copy.deepcopy(dict(r=np.array(lidar.distances), a=lidar.angles))
+            Xs = np.multiply(measurements['r']/1000, np.cos(np.deg2rad(measurements['a'])))
+            Ys = np.multiply(measurements['r']/1000, np.sin(np.deg2rad(measurements['a'])))
+            axs[idx].plot(Xs, Ys, 'bo', markersize=1)
 
-        measurements = copy.deepcopy(dict(r=np.array(lidar.distances), a=lidar.angles))
-        Xs = np.multiply(measurements['r']/1000, np.cos(np.deg2rad(measurements['a'])))
-        Ys = np.multiply(measurements['r']/1000, np.sin(np.deg2rad(measurements['a'])))
-        plt.plot(Xs, Ys, 'bo', markersize=1)
+            markerMeasure = filterMeasurement(measurements, CarToLidarFoVs[idx])
+            MarkerXs = np.multiply(markerMeasure['r']/1000, np.cos(np.deg2rad(markerMeasure['a'])))
+            MarkerYs = np.multiply(markerMeasure['r']/1000, np.sin(np.deg2rad(markerMeasure['a'])))
+            axs[idx].plot(MarkerXs, MarkerYs, 'rx', markersize=3)
+            axs[idx].set_xlim([-2, 2])
+            axs[idx].set_ylim([-2, 2])
+            axs[idx].grid(True)
+            axs[idx].axis('equal')
 
-        markerMeasure = filterMeasurement(measurements)
-        MarkerXs = np.multiply(markerMeasure['r']/1000, np.cos(np.deg2rad(markerMeasure['a'])))
-        MarkerYs = np.multiply(markerMeasure['r']/1000, np.sin(np.deg2rad(markerMeasure['a'])))
-        plt.plot(MarkerXs, MarkerYs, 'rx', markersize=3)
-
-        ax.grid(True)
         plt.pause(0.01)
-        datapoint = dict(t=time.time(), gt=groundTrue, z=measurements)
-        recording.append(copy.deepcopy(datapoint))
-        np.save(filename, recording)
+        # datapoint = dict(t=time.time(), gt=groundTrue, z=measurements)
+        # recording.append(copy.deepcopy(datapoint))
+        # np.save(filename, recording)
     plt.show()
 # ==============================================================================
 def replayData(filename):
@@ -194,6 +204,6 @@ def calibration(filename):
 # ==============================================================================
 if __name__ == '__main__':
     filename = 'calibrationData/calibrateRaw.npy'
-    # recordData(filename)
+    recordData(filename)
     # replayData(filename)
-    calibration(filename)
+    # calibration(filename)

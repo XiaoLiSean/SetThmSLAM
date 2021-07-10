@@ -1,19 +1,18 @@
 import time, serial, threading
-from params import LIDAR_PORT1
 
 # ------------------------------------------------------------------------------
 class RPLidarA1(object):
     '''
     https://github.com/SkoltechRobotics/rplidar
     '''
-    def __init__(self, port=LIDAR_PORT1):
-        from rplidar import RPLidar
+    def __init__(self, port):
+        from sensors.RPLidarA1M8 import RPLidarA1M8
         self.port = port
         self.distances = [] #a list of distance measurements
         self.angles = [] # a list of angles corresponding to dist meas above
-        self.lidar = RPLidar(self.port)
+        self.lidar = RPLidarA1M8(self.port)
         self.lidar.clear_input()
-        time.sleep(1)
+        time.sleep(2)
         self.on = True
 
     def update(self):
