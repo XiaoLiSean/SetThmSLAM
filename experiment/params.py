@@ -22,4 +22,4 @@ CarToLidar1FoV = dict(FoVs=[[0,60], [300, 360]], rmax=1500)
 CarToLidar2FoV = dict(FoVs=[[0,60], [300, 360]], rmax=1500)
 CarToLidar3FoV = dict(FoVs=[[0,60], [300, 360]], rmax=1500)
 CarToLidarFoVs = [CarToLidar1FoV, CarToLidar2FoV, CarToLidar3FoV]
-PosErrorMax = 0.05 # maximum position l2 error between lidar and optitrack estimation in [meter]
+DistanceThreshold = [0.2, 0.3, 0.3] # maximum position l2 error between lidar and optitrack estimation in [meter]
