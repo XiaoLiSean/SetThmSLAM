@@ -1,4 +1,11 @@
 function output = intervalWrapTo2Pi(input)
+    while (input.inf<0)&&(input.sup<0)
+        input   = interval(input.inf+2*pi, input.sup+2*pi);
+    end
+    while (input.inf>2*pi)&&(input.sup>2*pi)
+        input   = interval(input.inf-2*pi, input.sup-2*pi);
+    end
+    
     if abs(volume(input) - 2*pi) < deg2rad(0.0001) || volume(input) > 2*pi
         output  = interval(0, 2*pi);
     elseif (input.inf < 0 && input.sup > 0) || (input.inf < 2*pi && input.sup > 2*pi)

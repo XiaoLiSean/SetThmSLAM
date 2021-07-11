@@ -27,18 +27,33 @@ classdef params
     end
     methods
         function obj = params()
-            fileID  = fopen('calibrationData/calibrationParams.txt','r');
-            data    = split(fscanf(fileID,'%s'), ',');
-            obj.m       = 1;
+            num_lidar   = 0;
+            e_va        = [];
+            e_vr        = [];
+            maxSpeed    = [];
+            fileID      = fopen('calibrationData/calibrationParams.txt','r');
+            while true
+                newline     = fgetl(fileID);
+                if ~ischar(newline)
+                  break; 
+                end
+                data        = split(newline, ',');
+                l_hat_i     = [str2double(data{1}); str2double(data{2}); str2double(data{3})];
+                obj.l_hat   = [obj.l_hat, l_hat_i];
+                e_va        = [e_va, str2double(data{4})];
+                e_vr        = [e_vr, str2double(data{5})];
+                maxSpeed    = [maxSpeed, str2double(data{6})];
+                num_lidar   = num_lidar + 1;
+            end
             obj.n       = 1;
-            obj.l_hat   = [str2double(data{1}); str2double(data{2}); str2double(data{3})];
-            obj.e_va    = str2double(data{4});
-            obj.e_vr    = str2double(data{5});
-            obj.maxSpeed    = str2double(data{6});
+            obj.m       = num_lidar;
+            obj.e_va    = max(e_va);
+            obj.e_vr    = max(e_vr);
+            obj.maxSpeed    = max(maxSpeed);
             
             % Later these data should be initialized differently from the 
             % raw/calibrated data given new lidar layout
-            obj.Omega_L     = interval([-2; -2], [2; 2]);
+            obj.Omega_L     = interval([-5; -5], [5; 5]);
             obj.Omega_P     = obj.Omega_L;
             for i = 1:obj.n
                 obj.P{i}        = obj.Omega_P;

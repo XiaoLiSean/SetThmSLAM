@@ -4,6 +4,7 @@ classdef SetThmSLAM < handle
         m; % number of cameras
         
         %% Uncertainty sets
+        updateCamera; % bool: if update the  camera uncertainty set
         Omega_L; % Entire parking space (including camera sets L)
         Omega_P; % Entire parking space (including marker sets P)
         Lxy; % Camera position uncertainty set
@@ -43,7 +44,7 @@ classdef SetThmSLAM < handle
     end
     
     methods
-        function obj = SetThmSLAM(pr, isStereoVision, enableRigidBodyConstraints, isReconstruction, relativeNominalMarkerStates)
+        function obj = SetThmSLAM(pr, isStereoVision, updateCamera, enableRigidBodyConstraints, isReconstruction, relativeNominalMarkerStates)
             obj.n           = pr.n;
             obj.m           = pr.m;
             for i = 1:obj.n
@@ -65,6 +66,7 @@ classdef SetThmSLAM < handle
             obj.dVFractionThreshold         = pr.dVFractionThreshold;
             obj.enableRigidBodyConstraints  = enableRigidBodyConstraints;
             obj.isReconstruction            = isReconstruction;
+            obj.updateCamera                = updateCamera;
             if obj.enableRigidBodyConstraints
                 obj.e_rb            = pr.epsilon_rb;
                 obj.constraintArr   = obj.initiate_contraint(relativeNominalMarkerStates);
@@ -118,8 +120,10 @@ classdef SetThmSLAM < handle
                     if isempty(obj.Au{i})
                         continue
                     end
-                    obj.update_ith_Lt(i);
-                    obj.update_ith_Lxy(i);
+                    if obj.updateCamera
+                        obj.update_ith_Lt(i);
+                        obj.update_ith_Lxy(i);
+                    end
                     markers     = getUpdateableArr(obj.Au{i});
                     for idx = 1:length(markers)
                         obj.update_jth_P_by_Mi(i, markers(idx));

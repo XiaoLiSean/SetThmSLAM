@@ -183,7 +183,7 @@ def updateCalibratedPlot(data, lidar_i, calibrationParams, ax):
     return markerMeasurements
 # ------------------------------------------------------------------------------
 def saveDataAndCalibrationParam(dataSynchronized, calibrationParams):
-    with open('calibrationData/calibratedData.csv', "w+") as f:
+    with open('calibrationData/calibratedData.txt', "w+") as f:
         write = csv.writer(f)
         write.writerows(dataSynchronized)
     calibrationParams = np.array(calibrationParams).reshape((len(LIDAR_PORTs),6))

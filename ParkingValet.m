@@ -105,7 +105,7 @@ classdef ParkingValet < handle
             obj.enableSetSLAM       = enableSetSLAM;
             obj.enableFastSLAM      = enableFastSLAM;
             if enableSetSLAM
-                obj.SetSLAM             = SetThmSLAM(obj.pr, obj.isStereoVision, enableRigidBodyConstraints, isReconstruction, obj.p_hat_rel);
+                obj.SetSLAM             = SetThmSLAM(obj.pr, obj.isStereoVision, true, enableRigidBodyConstraints, isReconstruction, obj.p_hat_rel);
             end
             if enableFastSLAM
                 obj.FastSLAM            = FastSLAM(obj.pr, obj.isStereoVision);
