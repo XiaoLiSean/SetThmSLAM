@@ -57,7 +57,7 @@ classdef ParkingValet < handle
     end
     methods
         %% Initialization
-        function obj = ParkingValet(cameraType, enableFastSLAM, enableSetSLAM, enableRigidBodyConstraints, isReconstruction)
+        function obj = ParkingValet(cameraType, enableCamSet, enableFastSLAM, enableSetSLAM, enableRigidBodyConstraints, isReconstruction)
             addpath('./util')
             addpath('./set operation')
             addpath('./partical filtering')
@@ -105,7 +105,7 @@ classdef ParkingValet < handle
             obj.enableSetSLAM       = enableSetSLAM;
             obj.enableFastSLAM      = enableFastSLAM;
             if enableSetSLAM
-                obj.SetSLAM             = SetThmSLAM(obj.pr, obj.isStereoVision, true, enableRigidBodyConstraints, isReconstruction, obj.p_hat_rel);
+                obj.SetSLAM             = SetThmSLAM(obj.pr, obj.isStereoVision, enableCamSet, enableRigidBodyConstraints, isReconstruction, obj.p_hat_rel);
             end
             if enableFastSLAM
                 obj.FastSLAM            = FastSLAM(obj.pr, obj.isStereoVision);
@@ -165,8 +165,10 @@ classdef ParkingValet < handle
                     end
                     obj.updateMeasurements();
                     if obj.enableSetSLAM
+                        tic
                         obj.SetSLAM.getMeasureAndMatching(obj.Ma, obj.Mr, obj.A_hat);
                         obj.SetSLAM.updateSets();
+                        toc
                     end
                     if obj.enableFastSLAM
                         obj.FastSLAM.getMeasureAndMatching(obj.Ma, obj.Mr, obj.A_hat);

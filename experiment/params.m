@@ -2,7 +2,7 @@ classdef params
     properties        
         %% CCTV parameters
         FoV = 2*pi; % lidar Field of View (https://www.slamtec.com/en/Lidar/A1)
-        Measurable_R = 12; % Markers within Measurable_R are measurable (https://www.slamtec.com/en/Lidar/A1)
+        Measurable_R = 5; % Markers within Measurable_R are measurable (https://www.slamtec.com/en/Lidar/A1)
         m; % Numbers of total lidar
         n; % number of markers
         l_hat; % lidar Nominal State [x (m);y (m);theta (rad)]  
@@ -53,7 +53,7 @@ classdef params
             
             % Later these data should be initialized differently from the 
             % raw/calibrated data given new lidar layout
-            obj.Omega_L     = interval([-5; -5], [5; 5]);
+            obj.Omega_L     = interval([-2; -2], [0.5; 0.5]);
             obj.Omega_P     = obj.Omega_L;
             for i = 1:obj.n
                 obj.P{i}        = obj.Omega_P;

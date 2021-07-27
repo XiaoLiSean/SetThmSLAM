@@ -68,8 +68,8 @@ classdef params
                        -0.1*params.carLength,   0.5*params.carWidth; 
                         0.6*params.carLength,   0.0]'; % initial markers' position in ego car's frame: p_hat_rel(:,i) = [x;y]
         ref_marker  = 3; % index of referred marker for vehicle heading reconstruction
-        epsilon_Lt  = deg2rad(5); % in rad
-        epsilon_Lxy = 0.2; % in meter
+        epsilon_Lt  = deg2rad(0.5); % in rad
+        epsilon_Lxy = 0.1; % in meter
         epsilon_P   = 5; % in meter
         epsilon_rb  = 0.02; % rigid body uncertainty in [meter]
         dVFractionThreshold     = 0.01; % used to determine the termination of set update

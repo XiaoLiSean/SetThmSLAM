@@ -258,8 +258,14 @@ classdef SetThmSLAM < handle
                 end
             end
         end
-        % Update Pi using constraint between pi and pj
-        function update_ith_P_by_constraint(obj, i, constraint, j)
+        % Update Pi using constraint between pi and pj (effecient version)
+        function update_ith_P_by_constraint(obj, i, constraint, j)   
+            unitP       = decomposeCirc2ConvPolygons([0,0], constraint.sup, obj.ringSecNum);
+            overP       = plus(obj.P{j}, unitP);
+            obj.P{i}    = and(obj.P{i}, overP);
+        end
+        % Update Pi using constraint between pi and pj (Tedious version and computational complex)
+        function update_ith_P_by_constraint_tedious(obj, i, constraint, j)
             [r, c, ~]   = ExactMinBoundCircle(obj.P{j}.P.V);
             r_min       = max([constraint.inf - r, 0]);
             r_max       = constraint.sup + r;
