@@ -18,8 +18,8 @@ LIDAR_PORTs = [LIDAR_PORT1, LIDAR_PORT2, LIDAR_PORT3]
 # ==============================================================================
 # [t1, t2], rmax: car is in the lidar field of view [t1,t2] within range of rmax
 # where the lidar measurements is in [0, 360 deg]
-CarToLidar1FoV = dict(FoVs=[[0,60], [300, 360]], rmax=1500)
-CarToLidar2FoV = dict(FoVs=[[0,60], [300, 360]], rmax=1500)
-CarToLidar3FoV = dict(FoVs=[[0,60], [300, 360]], rmax=1500)
+CarToLidar1FoV = dict(FoVs=[[0,60], [300, 360]], rmax=1400)
+CarToLidar2FoV = dict(FoVs=[[0,60], [300, 360]], rmax=1400)
+CarToLidar3FoV = dict(FoVs=[[0,60], [300, 360]], rmax=1400)
 CarToLidarFoVs = [CarToLidar1FoV, CarToLidar2FoV, CarToLidar3FoV]
-DistanceThreshold = [0.2, 0.3, 0.3] # maximum position l2 error between lidar and optitrack estimation in [meter]
+DistanceThreshold = [0.2, 0.8, 0.8] # maximum position l2 error between lidar and optitrack estimation in [meter]

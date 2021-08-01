@@ -262,4 +262,4 @@ if __name__ == '__main__':
     # recordData(filename)
     # replayData(filename)
     # calibration(filename, True)
-    calibration(filename, False)
+    # calibration(filename, False)
