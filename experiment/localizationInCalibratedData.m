@@ -8,7 +8,7 @@ addpath('../util')
 %% Main
 figure(1);
 pr          = params;
-SetSLAM     = SetThmSLAM(pr, false, true, false, false, []);
+SetSLAM     = SetThmSLAM(pr, true, false, false, false, []);
 fid         = fopen('calibrationData/calibratedData.txt','rt');
 is_initial  = true;
 
@@ -27,14 +27,19 @@ while true
       break; 
     end
     data    = split(newline, ',');
-    if length(data) < 3
+    if length(data) <= 6
         continue
     end
     if is_initial
-        dt  = 0;
+        dt      = 0;
+        p_prev  = [str2double(data{2}); str2double(data{3})];
         is_initial  = false;
     else
-        dt  = str2double(data{1}) - t_prev;
+        dt      = str2double(data{1}) - t_prev;
+        p_prev  = p_hat;
+        if dt < 0
+            error('negative dt');
+        end
     end
     t_prev  = str2double(data{1});
     p_hat   = [str2double(data{2}); str2double(data{3})];
@@ -42,7 +47,7 @@ while true
     tic
     distance    = dt*pr.maxSpeed;
 	SetSLAM.propagateSetsWithDistance(distance);
-    [Mas, Mrs, A_hats]  = formulateMeasurements(data, pr.m);
+    [Mas, Mrs, A_hats, Ma, Mr]  = formulateMeasurements(data, pr.m);
     for i = 1:length(Mas)
         SetSLAM.getMeasureAndMatching(Mas{i}, Mrs{i}, A_hats{i});
         SetSLAM.updateSets();
@@ -68,12 +73,16 @@ while true
         y       = [pr.l_hat(2,i)+r*sin(t1), pr.l_hat(2,i), pr.l_hat(2,i)+r*sin(t2)];
         ht{i}   = plot(x, y, 'b');
     end
+    %check_feasibility(p_hat, p_prev, distance, pr, Ma, Mr)
+    if in(SetSLAM.P{1}, p_hat) == 0
+        error('nominal state outside the set');
+    end
     pause(0.01)
 end
 fclose(fid);
 
 %% Sub function used to pre-process incoming data
-function [Mas, Mrs, A_hats] = formulateMeasurements(data, m)
+function [Mas, Mrs, A_hats, Ma, Mr] = formulateMeasurements(data, m)
     lidar_i     = 0;
     i           = 4;
     while true
@@ -111,5 +120,26 @@ function [Mas, Mrs, A_hats] = formulateMeasurements(data, m)
             end
         end
         z_num   = z_num - 1;
+    end
+end
+%% Check if the measurement has a bounded error
+function check_feasibility(p_hat, p_prev, distance, pr, Ma, Mr)
+    distance_gt     = norm(p_hat-p_prev,2);
+    if distance_gt > distance
+        error('Ground true displacement larger than bound');
+    end
+    for i = 1:pr.m
+        for j = 1:length(Ma{i})
+            range_gt        = norm(p_hat-[pr.l_hat(1,i);pr.l_hat(2,i)]);
+            range_error     = abs(range_gt-Mr{i}(j));
+            if range_error > pr.e_vr
+                error('Range error exceed bound');
+            end            
+            bearing_gt      = atan2(p_hat(2)-pr.l_hat(2,i),p_hat(1)-pr.l_hat(1,i))-pr.l_hat(3,i);
+            bearing_error   = min([mod(bearing_gt-Ma{i}(j), 2*pi), abs(bearing_gt-Ma{i}(j)), mod(abs(bearing_gt-Ma{i}(j)), 2*pi)]);
+            if bearing_error > pr.e_va
+                error('Bearing error exceed bound');
+            end
+        end
     end
 end

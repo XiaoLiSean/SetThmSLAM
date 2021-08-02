@@ -19,11 +19,12 @@ classdef params
         P; % Markers' position: P{i} in 2D
         
         %% uncertainty set initialization dimension
-        epsilon_Lt  = deg2rad(0.5); % in rad
-        epsilon_Lxy = 0.01; % in meter
+        epsilon_Lt  = deg2rad(1e-4); % in rad
+        epsilon_Lxy = 1e-4; % in meter
         epsilon_P   = 1; % in meter
         dVFractionThreshold     = 0.01; % used to determine the termination of set update
         ring_sector_num         = 8; % sector the constraint ring to parts as convex polygons
+        safetyIndex             = 1.2; % ensure safe propagation given the maxSpeed can be wrong
     end
     methods
         function obj = params()
@@ -47,13 +48,13 @@ classdef params
             end
             obj.n       = 1;
             obj.m       = num_lidar;
-            obj.e_va    = max(e_va);
-            obj.e_vr    = max(e_vr);
-            obj.maxSpeed    = max(maxSpeed);
+            obj.e_va    = obj.safetyIndex*max(e_va);
+            obj.e_vr    = obj.safetyIndex*max(e_vr);
+            obj.maxSpeed    = obj.safetyIndex*max(maxSpeed);
             
             % Later these data should be initialized differently from the 
             % raw/calibrated data given new lidar layout
-            obj.Omega_L     = interval([-2; -2], [0.5; 0.5]);
+            obj.Omega_L     = interval([-1; -2], [1; 0]);
             obj.Omega_P     = obj.Omega_L;
             for i = 1:obj.n
                 obj.P{i}        = obj.Omega_P;

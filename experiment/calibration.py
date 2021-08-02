@@ -133,10 +133,12 @@ def obtainMaximumBound(dataSynchronized, dx, dy, theta):
         range_z = z[6]
         bearing_gt = np.arctan2(y_gt-dy, x_gt-dx) - theta
         range_gt = np.sqrt((y_gt-dy)**2+(x_gt-dx)**2)
-        if abs(bearing_gt-bearing_z) > e_a:
-            e_a = min(np.mod(bearing_gt-bearing_z, 2*np.pi), abs(bearing_gt-bearing_z), np.mod(abs(bearing_gt-bearing_z), 2*np.pi))
-        if abs(range_gt-range_z) > e_r:
-            e_r = abs(range_gt-range_z)
+        range_error = abs(range_gt-range_z)
+        bearing_error = min(np.mod(bearing_gt-bearing_z, 2*np.pi), abs(bearing_gt-bearing_z), np.mod(abs(bearing_gt-bearing_z), 2*np.pi))
+        if bearing_error > e_a:
+            e_a = bearing_error
+        if range_error > e_r:
+            e_r = range_error
         if idx > 0:
             x_gt_prev = dataSynchronized[idx-1][1]
             y_gt_prev = dataSynchronized[idx-1][2]
@@ -160,6 +162,7 @@ def updateCalibratedPlot(data, lidar_i, calibrationParams, ax):
     dx = calibrationParams[0]
     dy = calibrationParams[1]
     theta = calibrationParams[2]
+    bearingMaxErr = calibrationParams[3]
     rangeMaxErr = calibrationParams[4]
     markerMeasurements = ['-']
 
@@ -171,10 +174,16 @@ def updateCalibratedPlot(data, lidar_i, calibrationParams, ax):
     ax.plot(Xs, Ys, 'b.', markersize=1)
 
     for i in range(len(measurement['r'])):
-        if np.sqrt((groundTrue[0]-Xs[i])**2+(groundTrue[1]-Ys[i])**2) < rangeMaxErr:
+        bearing_z = np.deg2rad(measurement['a'][i])
+        bearing_gt = np.arctan2(groundTrue[1]-dy, groundTrue[0]-dx) - theta
+        e_a = min(np.mod(bearing_gt-bearing_z, 2*np.pi), abs(bearing_gt-bearing_z), np.mod(abs(bearing_gt-bearing_z), 2*np.pi))
+        range_z = measurement['r'][i]/1000
+        range_gt = np.sqrt((groundTrue[1]-dy)**2+(groundTrue[0]-dx)**2)
+        e_r = abs(range_gt-range_z)
+        if e_r < rangeMaxErr and e_a < rangeMaxErr:
             ax.plot(Xs[i], Ys[i], 'go', markersize=3)
-            markerMeasurements.append(np.deg2rad(measurement['a'][i]))
-            markerMeasurements.append(measurement['r'][i]/1000)
+            markerMeasurements.append(bearing_z)
+            markerMeasurements.append(range_z)
 
     ax.grid(True)
     ax.axis('equal')
@@ -224,14 +233,14 @@ def calibration(filename, labelDistanceThreshold=True):
             if labelDistanceThreshold:
                 distanceErrs[lidar_i].append(l2error)
             else:
-                if l2error > DistanceThreshold[lidar_i]:
+                if l2error < DistanceThreshold[lidar_i][0] or l2error > DistanceThreshold[lidar_i][1]:
                     dataCalibration[lidar_i].remove(z)
         # ----------------------------------------------------------------------
         # resolve lidar pose use filtered dataSynchronized
+        dx, dy, theta = solveLidarPose(dataCalibration[lidar_i])
+        e_a, e_r, v_max = obtainMaximumBound(dataCalibration[lidar_i], dx, dy, theta)
+        calibrationParams.append([dx.item(0), dy.item(0), theta.item(0), e_a.item(0), e_r.item(0), v_max])
         if not labelDistanceThreshold:
-            dx, dy, theta = solveLidarPose(dataCalibration[lidar_i])
-            e_a, e_r, v_max = obtainMaximumBound(dataCalibration[lidar_i], dx, dy, theta)
-            calibrationParams.append([dx.item(0), dy.item(0), theta.item(0), e_a.item(0), e_r.item(0), v_max])
             print('-----'*20)
             print("Calibration result: [dx, dy, theta] = ({}[m],{}[m],{}[deg])".format(dx, dy, np.rad2deg(theta)))
             print("Maximum error/speed bound: bearing {}[deg]; range {}[m]; speed {}[m/s]".format(np.rad2deg(e_a), e_r, v_max))
@@ -243,18 +252,20 @@ def calibration(filename, labelDistanceThreshold=True):
         fig, axs = plt.subplots(num_lidar)
         for i in range(num_lidar):
             axs[i].hist(np.array(distanceErrs[i]), bins=len(distanceErrs[i]))
+            axs[i].set_xticks(np.arange(0,1,0.02))
+            axs[i].set_xticklabels(np.round(np.arange(0,1,0.02), 2))
         plt.show()
-    else:
-        fig, axs = plt.subplots(ncols=num_lidar)
-        for data in recording:
-            singleData = [data['t'], data['gt'][0], data['gt'][1]] # append timestamp
-            for i in range(num_lidar):
-                markerMeasurements = updateCalibratedPlot(data, i, calibrationParams[i], axs[i])
-                singleData.extend(markerMeasurements)
-            dataSynchronized.append(singleData)
-            plt.pause(0.01)
-        plt.show()
-        saveDataAndCalibrationParam(dataSynchronized, calibrationParams)
+
+    fig, axs = plt.subplots(ncols=num_lidar)
+    for data in recording:
+        singleData = [data['t'], data['gt'][0], data['gt'][1]] # append timestamp
+        for i in range(num_lidar):
+            markerMeasurements = updateCalibratedPlot(data, i, calibrationParams[i], axs[i])
+            singleData.extend(markerMeasurements)
+        dataSynchronized.append(singleData)
+        plt.pause(0.01)
+    plt.show()
+    saveDataAndCalibrationParam(dataSynchronized, calibrationParams)
 
 # ==============================================================================
 if __name__ == '__main__':
@@ -262,4 +273,4 @@ if __name__ == '__main__':
     # recordData(filename)
     # replayData(filename)
     # calibration(filename, True)
-    # calibration(filename, False)
+    calibration(filename, False)
