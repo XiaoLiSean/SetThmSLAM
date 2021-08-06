@@ -64,14 +64,14 @@ classdef params
         approxSeparation    = 0.1; % Specify number of poses to return using a separation of approximately 0.1 m
         
         %% Constant used in initializing and Update Uncertainty Set
-        p_hat_rel   = [-0.1*params.carLength,  -0.5*params.carWidth; 
-                       -0.1*params.carLength,   0.5*params.carWidth; 
-                        0.6*params.carLength,   0.0]'; % initial markers' position in ego car's frame: p_hat_rel(:,i) = [x;y]
-        ref_marker  = 3; % index of referred marker for vehicle heading reconstruction
+        p_hat_rel   = [-0.25*params.carLength,  0.5*params.carWidth; 
+                       0.75*params.carLength,   0.5*params.carWidth; 
+                       -0.25*params.carLength,  -0.5*params.carWidth; 
+                       0.75*params.carLength,   -0.5*params.carWidth]'; % initial markers' position in ego car's frame: p_hat_rel(:,i) = [x;y]
         epsilon_Lt  = deg2rad(0.5); % in rad
         epsilon_Lxy = 0.1; % in meter
         epsilon_P   = 5; % in meter
-        epsilon_rb  = 0.02; % rigid body uncertainty in [meter]
+        epsilon_rb  = 0.00; % rigid body uncertainty in [meter]
         dVFractionThreshold     = 0.01; % used to determine the termination of set update
         ring_sector_num         = 8; % sector the constraint ring to parts as convex polygons
         

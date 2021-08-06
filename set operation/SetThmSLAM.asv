@@ -227,11 +227,9 @@ classdef SetThmSLAM < handle
         
         function updateReconstructedSets(obj)
             obj.Pxy     = convHull(convHull(obj.P{1},obj.P{2}), convHull(obj.P{3},obj.P{4}));
-            [betaInf, betaSup]  = atan2OverConvPolygons(obj.P{2}, obj.P{1});
-            heading1    = interval(betaInf, betaSup);
-            [betaInf, betaSup]  = atan2OverConvPolygons(obj.P{4}, obj.P{3});
-            heading2    = interval(betaInf, betaSup);
-            obj.Pt      = angleIntervalIntersection(heading1, heading2);
+            [betaInf, betaSup]  = atan2OverConvPolygons(obj.P{1}, obj.P{2});
+            heading1      = interval(betaInf, betaSup);
+            obj.Pt      = 
         end
         %% Function used to update the sets from rigid body contraints
         function constraintArr = initiate_contraint(obj, relativeNominalMarkerStates)

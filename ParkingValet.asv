@@ -61,7 +61,6 @@ classdef ParkingValet < handle
             addpath('./util')
             addpath('./set operation')
             addpath('./partical filtering')
-            obj.pr  = params;
             % -------------------------------------------------------------
             obj.lib         = demoEssentials;
             obj.vehicleDim  = obj.pr.carDims;
@@ -77,29 +76,7 @@ classdef ParkingValet < handle
             obj.motionPlanner       = pathPlannerRRT(obj.costmap);
             obj.behavioralPlanner   = HelperBehavioralPlanner(obj.pr.routePlan, obj.pr.maxSteeringAngle);
             obj.lonController       = HelperLongitudinalController('SampleTime', obj.pr.sampleTime);
-            % -------------------------------------------------------------
-            if strcmp(cameraType,'stereo')
-                obj.isStereoVision  = true;
-                obj.e_va            = obj.pr.e_va;
-                obj.e_vr            = obj.pr.e_vr;
-            elseif strcmp(cameraType,'mono')
-                obj.isStereoVision  = false;
-                obj.e_va            = obj.pr.e_va;
-            end
-            obj.Measurable_R    = obj.pr.Measurable_R;
-            obj.p_hat_rel       = obj.pr.p_hat_rel;
-            obj.p_car           = obj.pr.p_0;
-            for i = 1:obj.pr.n
-                obj.p_hat{i}    = [obj.pr.p_hat(1,i); obj.pr.p_hat(2,i)];
-            end
-            for i = 1:obj.pr.m
-                obj.lxy_hat{i}  = [obj.pr.l_hat(1,i); obj.pr.l_hat(2,i)];
-                obj.lt_hat{i}   = obj.pr.l_hat(3,i);
-            end
-            obj.isReconstruction    = isReconstruction;
-            if obj.isReconstruction
-                obj.updateReconstructedNominalStates();
-            end
+ 
             % -------------------------------------------------------------
             obj.enableSetSLAM       = enableSetSLAM;
             obj.enableFastSLAM      = enableFastSLAM;
@@ -366,7 +343,7 @@ classdef ParkingValet < handle
             if obj.isReconstruction
                 if obj.enableSetSLAM
                     obj.h_Pxy   = plot(obj.SetSLAM.Pxy);
-                    r           = obj.pr.carLength;
+                    r           = norm(obj.pxy-obj.p_hat{obj.reconRefIdx}, 2);
                     t1          = obj.SetSLAM.Pt.inf;
                     t2          = obj.SetSLAM.Pt.sup;
                     x           = [obj.pxy(1)+r*cos(t1), obj.pxy(1), obj.pxy(1)+r*cos(t2)];
@@ -374,7 +351,7 @@ classdef ParkingValet < handle
                     obj.h_Pt    = plot(x, y, 'b');
                 end
                 obj.h_pxy   = plot(obj.pxy(1), obj.pxy(2), 'r.', 'MarkerSize', 10);
-                obj.h_pt    = plot([obj.pxy(1), obj.pxy(1)+r*cos(obj.pt)], [obj.pxy(2), obj.pxy(2)+r*sin(obj.pt)], 'r--');
+                obj.h_pt    = plot([obj.pxy(1), obj.p_hat{obj.reconRefIdx}(1)], [obj.pxy(2), obj.p_hat{obj.reconRefIdx}(2)], 'r--');
             else
                 for i = 1:obj.pr.n
                     if obj.enableSetSLAM
