@@ -17,18 +17,18 @@ classdef EKFCamera < handle
             obj.FoV             = pr.FoV;
             % measurement noise covariance
             if obj.isStereoVision
-                obj.M   = diag([pr.e_va/3, pr.e_vr/3].^2);
+                obj.M   = diag([pr.e_va, pr.e_vr].^2);
             else
-                obj.M   = (pr.e_va/3)^2;
+                obj.M   = (pr.e_va)^2;
             end
             % initial mean and covariance
             obj.state   = sampledCamStates;
-            % initialize the Sigma with 3-sigma circle bound the uncertanty
+            % initialize the Sigma with 1-sigma circle bound the uncertanty
             % set of pr.Lxy{ithCamera}
             area        = volume(pr.Lxy{ithCamera});
             radius      = sqrt(area/pi);
-            sigma_xy    = radius/3;
-            sigma_t     = volume(pr.Lt{ithCamera})/(2*3);
+            sigma_xy    = radius;
+            sigma_t     = volume(pr.Lt{ithCamera})/2;
             obj.Sigma   = diag([sigma_xy, sigma_xy, sigma_t].^2);
         end
         
@@ -36,11 +36,7 @@ classdef EKFCamera < handle
         % camera in 3D which yields p_z the possibility of getting the
         % measurement of z
         function p_z = measurementUpdate(obj, z, markerState)
-            [angle, distance, isMeasurable]     = measureModel(markerState, obj.state, obj.Measurable_R, obj.FoV);
-            if ~isMeasurable
-                p_z     = 0; % do not trust this particle by setting a zero weight
-                return
-            end
+            [angle, distance, ~]     = measureModel(markerState, obj.state, obj.Measurable_R, obj.FoV);
             if obj.isStereoVision
                 z_hat   = [angle; distance];
                 z(1)    = wrapToPi(z(1));
@@ -53,9 +49,9 @@ classdef EKFCamera < handle
             K       = obj.Sigma*H' / Q;
             v       = z - z_hat; % innovation
             v(1)    = wrapToPi(v(1));
-% Freeze camera state update
-%             obj.state   = obj.state + K*v;
-%             obj.Sigma   = (eye(size(obj.Sigma))-K*H)*obj.Sigma;
+            % Freeze camera state update
+            % obj.state   = obj.state + K*v;
+            % obj.Sigma   = (eye(size(obj.Sigma))-K*H)*obj.Sigma;
             % (Q+Q')/2 in case of asymmetric sigma due to numerical error
             p_z         = mvnpdf(z, z_hat, (Q+Q')/2); % Possibility for getting measurement z = {range, bearing}
         end

@@ -48,7 +48,7 @@ classdef params
         maxSteeringAngle    = 35; % in degrees
         Wheelbase           = params.carLength - params.RearOverhang - params.FrontOverhang;
         MinTurningRadius    = params.Wheelbase/tan(params.maxSteeringAngle*pi/180); % in meters
-        safetyIndex         = 1.2; % ensure safe propagation given the maxSpeed can be wrong
+        safetyIndex         = 1.5; % ensure safe propagation given the maxSpeed can be wrong
         e_w                 = params.safetyIndex*params.maxSpeed*params.propTime*[1;1]; % motion update bound
 
         %% Path planning
@@ -70,7 +70,7 @@ classdef params
                        0.75*params.carLength,   -0.5*params.carWidth]'; % initial markers' position in ego car's frame: p_hat_rel(:,i) = [x;y]
         epsilon_Lt  = deg2rad(0.5); % in rad
         epsilon_Lxy = 0.1; % in meter
-        epsilon_P   = 5; % in meter
+        epsilon_P   = 0.5; % in meter
         epsilon_rb  = 0.00; % rigid body uncertainty in [meter]
         dVFractionThreshold     = 0.01; % used to determine the termination of set update
         ring_sector_num         = 8; % sector the constraint ring to parts as convex polygons
@@ -92,7 +92,7 @@ classdef params
     methods
         function obj = params()
             obj.n       = size(obj.p_hat_rel, 2);
-            obj.p_hat   = 0.0*obj.p_hat_rel;
+            obj.p_hat   = zeros(size(obj.p_hat_rel));
             theta       = deg2rad(obj.p_0(3));
             for i = 1:obj.n
                 obj.p_hat(1,i)  = obj.p_0(1) + obj.p_hat_rel(1,i)*cos(theta) - obj.p_hat_rel(2,i)*sin(theta);

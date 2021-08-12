@@ -26,26 +26,32 @@
             obj.e_w     = pr.e_w;
             obj.isStereoVision  = isStereoVision;
             obj.weights         = ones(obj.s,1)/obj.s;
-            for k = 1:obj.s
-                % marker in 2D using EKF
-                for i = 1:obj.n
-                    obj.particles{k}.Marker{i}.state    = randPoint(pr.P{i});
-                end
-                % Camera in 3D using partical filtering
-                for i = 1:obj.m
-                    sampledCamStates                    = [randPoint(pr.Lxy{i}); randPoint(pr.Lt{i})];
-                    obj.particles{k}.EKFCamera{i}       = EKFCamera(sampledCamStates, isStereoVision, pr, i);
+            % marker in 2D using EKF
+            for i = 1:obj.n
+                samples     = sampleBox(zonotope(pr.P{i}), obj.s);
+                for k = 1:obj.s
+                    obj.particles{k}.Marker{i}.state    = samples(:,k);
                 end
             end
+            % Camera in 3D using partical filtering
+            for i = 1:obj.m
+                samplesXY   = sampleBox(zonotope(pr.Lxy{i}), obj.s);
+                samplesT    = sampleBox(zonotope(pr.Lt{i}), obj.s);
+                for k = 1:obj.s
+                    obj.particles{k}.EKFCamera{i}       = EKFCamera([samplesXY(:,k); samplesT(k)], isStereoVision, pr, i);
+                end
+            end
+
             obj.updateMeanAndVariance()
         end
          
         function propagateParticles(obj)
+            
+            noiseRange      = interval([-obj.e_w(1); -obj.e_w(2)], [obj.e_w(1); obj.e_w(2)]);
+            noiseSample     = sampleBox(zonotope(noiseRange), obj.s);
             for k = 1:obj.s
                 for i = 1:obj.n
-                    noise_x         = rand()*2*obj.e_w(1) - obj.e_w(1);
-                    noise_y         = rand()*2*obj.e_w(2) - obj.e_w(2);
-                    obj.particles{k}.Marker{i}.state    = obj.particles{k}.Marker{i}.state + [noise_x; noise_y];
+                    obj.particles{k}.Marker{i}.state    = obj.particles{k}.Marker{i}.state + noiseSample(:,k);
                 end
             end
         end
@@ -80,7 +86,7 @@
             obj.weights     = obj.weights / weight_sum;
 
             Neff = 1 / sum(obj.weights.^2);
-            if Neff < obj.s / 2
+            if Neff < obj.s / 3
                 obj.resample();
             end
             obj.updateMeanAndVariance();
