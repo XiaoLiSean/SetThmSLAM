@@ -60,7 +60,7 @@ classdef ParkingValet < handle
         function obj = ParkingValet(cameraType, enableCamSet, enableFastSLAM, enableSetSLAM, enableRigidBodyConstraints, isReconstruction)
             addpath('./util')
             addpath('./set operation')
-            addpath('./partical filtering')
+            addpath('./filtering')
             obj.pr  = params;
             % -------------------------------------------------------------
             obj.lib         = demoEssentials;

@@ -53,8 +53,9 @@ classdef EKFCamera < handle
             K       = obj.Sigma*H' / Q;
             v       = z - z_hat; % innovation
             v(1)    = wrapToPi(v(1));
-            obj.state   = obj.state + K*v;
-            obj.Sigma   = (eye(size(obj.Sigma))-K*H)*obj.Sigma;
+% Freeze camera state update
+%             obj.state   = obj.state + K*v;
+%             obj.Sigma   = (eye(size(obj.Sigma))-K*H)*obj.Sigma;
             % (Q+Q')/2 in case of asymmetric sigma due to numerical error
             p_z         = mvnpdf(z, z_hat, (Q+Q')/2); % Possibility for getting measurement z = {range, bearing}
         end
