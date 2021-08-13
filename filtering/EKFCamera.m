@@ -44,7 +44,7 @@ classdef EKFCamera < handle
                 z_hat   = angle;
                 z       = wrapToPi(z);
             end
-            H       = measureJacobian(markerState, obj.state, z_hat, obj.isStereoVision);
+            H       = measureJacobian(markerState, obj.state, [angle; distance], obj.isStereoVision);
             Q       = H*obj.Sigma*H' + obj.M;
             K       = obj.Sigma*H' / Q;
             v       = z - z_hat; % innovation
