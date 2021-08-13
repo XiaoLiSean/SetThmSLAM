@@ -3,10 +3,14 @@ close all;
 
 %% Initialize Parking Space and Visualization
 cameraType              = 'stereo'; % ['mono'/'stereo']
+isReconstruction        = true; % reconstruction and plot the defined vehicle state instead of the markers
+enableCamUpdate         = false; % enable update camera set/particle
+enableCtrlSignal        = false; % enable pass control signal to propagate sets/particles
+% =======================================================
 enableSetSLAM           = false;
-enableCamSet            = false;
-enableFastSLAM          = true;
 enableRBConstraints     = false; % [true/false] to enable rigid body constraint in set update
-isReconstruction        = false; % reconstruction and plot the defined vehicle state instead of the markers
-PV                      = ParkingValet(cameraType, enableCamSet, enableFastSLAM, enableSetSLAM, enableRBConstraints, isReconstruction);
+% =======================================================
+enableFastSLAM          = true;
+% =======================================================
+PV                      = ParkingValet(cameraType, enableCamUpdate, enableFastSLAM, enableSetSLAM, enableRBConstraints, isReconstruction);
 PV.simulation();

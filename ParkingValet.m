@@ -57,7 +57,7 @@ classdef ParkingValet < handle
     end
     methods
         %% Initialization
-        function obj = ParkingValet(cameraType, enableCamSet, enableFastSLAM, enableSetSLAM, enableRigidBodyConstraints, isReconstruction)
+        function obj = ParkingValet(cameraType, enableCamUpdate, enableFastSLAM, enableSetSLAM, enableRigidBodyConstraints, isReconstruction)
             addpath('./util')
             addpath('./set operation')
             addpath('./filtering')
@@ -104,10 +104,10 @@ classdef ParkingValet < handle
             obj.enableSetSLAM       = enableSetSLAM;
             obj.enableFastSLAM      = enableFastSLAM;
             if enableSetSLAM
-                obj.SetSLAM             = SetThmSLAM(obj.pr, obj.isStereoVision, enableCamSet, enableRigidBodyConstraints, isReconstruction, obj.p_hat_rel);
+                obj.SetSLAM             = SetThmSLAM(obj.pr, obj.isStereoVision, enableCamUpdate, enableRigidBodyConstraints, isReconstruction, obj.p_hat_rel);
             end
             if enableFastSLAM
-                obj.FastSLAM            = FastSLAM(obj.pr, obj.isStereoVision);
+                obj.FastSLAM            = FastSLAM(obj.pr, obj.isStereoVision, enableCamUpdate, isReconstruction);
             end
         end
         
@@ -137,54 +137,49 @@ classdef ParkingValet < handle
                 end             
                 % =====================================================
                 % Control Update of Vehicle states and sets
-                if mod(current_time, obj.pr.propTime) < epsilon
+                if mod(current_time, obj.pr.propTime) < epsilon && current_time ~= 0
                     obj.vehicleSim.updateKinematics(obj.pr.propTime);
-                    currentPose = obj.vehicleSim.getVehiclePose();
-                    currentVel  = obj.vehicleSim.getVehicleVelocity();
+                    deltaXY     = obj.updateNominalStates(currentPose);
                     if obj.enableSetSLAM
                         obj.SetSLAM.propagateSets();
                     end
                     if obj.enableFastSLAM
                         obj.FastSLAM.propagateParticles();
+                        % obj.FastSLAM.propagateParticlesWithDistance(deltaXY)
                     end
                 end
                 % =====================================================
                 % Update Control Signal
-                if mod(current_time, obj.pr.sampleTime) < epsilon
+                if mod(current_time, obj.pr.sampleTime) < epsilon 
                     % Calculate control signal using stanley(steeringAngle) + pi(accelCmd, decelCmd) controller
                     [accelCmd, decelCmd, steeringAngle, direction] = obj.Controller(currentPose, currentVel);
                     obj.vehicleSim.drive(accelCmd, decelCmd, steeringAngle); 
                 end
                 % =====================================================
                 % Measurement Update Sets
-                if mod(current_time, obj.pr.updateTime) < epsilon
-                    obj.updateNominalStates(currentPose);
+                if mod(current_time, obj.pr.updateTime) < epsilon && current_time ~= 0
                     if obj.isReconstruction
                         obj.updateReconstructedNominalStates()
                     end
                     obj.updateMeasurements();
+                    tic
                     if obj.enableSetSLAM
-                        tic
                         obj.SetSLAM.getMeasureAndMatching(obj.Ma, obj.Mr, obj.A_hat);
                         obj.SetSLAM.updateSets();
-                        toc
                     end
                     if obj.enableFastSLAM
                         obj.FastSLAM.getMeasureAndMatching(obj.Ma, obj.Mr, obj.A_hat);
                         obj.FastSLAM.updateParticles();
                     end
-
+                    toc
                 end
                 % =====================================================
                 % Update Plot and Check if nominal states are in corresponding sets
                 if mod(current_time, obj.pr.plotTime) < epsilon
-                    obj.updateNominalStates(currentPose);
                     obj.eraseDrawing();
                     obj.drawAll();
                     obj.vehicleSim.updatePlot();
-                    if obj.enableSetSLAM
-                        obj.check_guaranteed_property()
-                    end
+                    obj.check_guaranteed_property()
                 end
                 % =====================================================
                 % Check if the sub-goal is reached
@@ -300,11 +295,13 @@ classdef ParkingValet < handle
         
         %% Update nominal states
         % update marker position p_hat using nominal par states p_car
-        function updateNominalStates(obj, p_car)
+        function deltaXY = updateNominalStates(obj, p_car)
             obj.p_car   = [p_car(1); p_car(2); deg2rad(p_car(3))];
+            deltaXY     = cell(1, obj.pr.n);
             for i = 1:obj.pr.n
                 x_marker_i      = obj.p_car(1) + obj.p_hat_rel(1,i)*cos(obj.p_car(3)) - obj.p_hat_rel(2,i)*sin(obj.p_car(3));
                 y_marker_i      = obj.p_car(2) + obj.p_hat_rel(1,i)*sin(obj.p_car(3)) + obj.p_hat_rel(2,i)*cos(obj.p_car(3));
+                deltaXY{i}      = [x_marker_i; y_marker_i] - obj.p_hat{i};
                 obj.p_hat{i}    = [x_marker_i; y_marker_i];
             end
         end
@@ -313,20 +310,29 @@ classdef ParkingValet < handle
         function updateReconstructedNominalStates(obj)
             state   = obj.vehicleSim.getVehiclePose();
             obj.pxy = state(1:2);
-            obj.pt  = state(3);
+            obj.pt  = deg2rad(state(3));
         end
         
         %% function used to check if the nominal state is in the corresponding sets
         function check_guaranteed_property(obj)
-            for i = 1:obj.pr.n
-                if in(obj.SetSLAM.P{i}, obj.p_hat{i}) == 0
-                    error('nominal state outside the set');
+            if obj.enableSetSLAM
+                for i = 1:obj.pr.n
+                    if in(obj.SetSLAM.P{i}, obj.p_hat{i}) == 0
+                        error('nominal state outside the set');
+                    end
+                end
+                for i = 1:obj.pr.m
+                    if in(obj.SetSLAM.Lxy{i}, obj.lxy_hat{i}) == 0 ||...
+                        (in(obj.SetSLAM.Lt{i}, wrapToPi(obj.lt_hat{i})) == 0 && in(obj.SetSLAM.Lt{i}, wrapTo2Pi(obj.lt_hat{i})) == 0)
+                        error('nominal state outside the set');
+                    end
                 end
             end
-            for i = 1:obj.pr.m
-                if in(obj.SetSLAM.Lxy{i}, obj.lxy_hat{i}) == 0 ||...
-                    (in(obj.SetSLAM.Lt{i}, wrapToPi(obj.lt_hat{i})) == 0 && in(obj.SetSLAM.Lt{i}, wrapTo2Pi(obj.lt_hat{i})) == 0)
-                    error('nominal state outside the set');
+            if obj.enableFastSLAM                
+                for i = 1:obj.pr.n
+                    if in(obj.FastSLAM.P{i}, obj.p_hat{i}) == 0
+                        disp('FastSLAM: nominal marker state outside the set');
+                    end
                 end
             end
         end
@@ -364,17 +370,25 @@ classdef ParkingValet < handle
         % visualization: update and erase dynamic plot
         function drawAll(obj)
             if obj.isReconstruction
-                if obj.enableSetSLAM
-                    obj.h_Pxy   = plot(obj.SetSLAM.Pxy);
-                    r           = obj.pr.carLength;
-                    t1          = obj.SetSLAM.Pt.inf;
-                    t2          = obj.SetSLAM.Pt.sup;
-                    x           = [obj.pxy(1)+r*cos(t1), obj.pxy(1), obj.pxy(1)+r*cos(t2)];
-                    y           = [obj.pxy(2)+r*sin(t1), obj.pxy(2), obj.pxy(2)+r*sin(t2)];
-                    obj.h_Pt    = plot(x, y, 'b');
-                end
+                r           = obj.pr.carLength;
                 obj.h_pxy   = plot(obj.pxy(1), obj.pxy(2), 'r.', 'MarkerSize', 10);
                 obj.h_pt    = plot([obj.pxy(1), obj.pxy(1)+r*cos(obj.pt)], [obj.pxy(2), obj.pxy(2)+r*sin(obj.pt)], 'r--');
+                if obj.enableSetSLAM
+                    obj.h_Pxy{1}    = plot(obj.SetSLAM.Pxy);
+                    t1              = obj.SetSLAM.Pt.inf;
+                    t2              = obj.SetSLAM.Pt.sup;
+                    x               = [obj.pxy(1)+r*cos(t1), obj.pxy(1), obj.pxy(1)+r*cos(t2)];
+                    y               = [obj.pxy(2)+r*sin(t1), obj.pxy(2), obj.pxy(2)+r*sin(t2)];
+                    obj.h_Pt{1}     = plot(x, y, 'b');
+                end
+                if obj.enableFastSLAM
+                    obj.h_Pxy{2}    = plot(obj.FastSLAM.Pxy, [1, 2], 'g');
+                    t1              = obj.FastSLAM.Pt.inf;
+                    t2              = obj.FastSLAM.Pt.sup;
+                    x               = [obj.pxy(1)+r*cos(t1), obj.pxy(1), obj.pxy(1)+r*cos(t2)];
+                    y               = [obj.pxy(2)+r*sin(t1), obj.pxy(2), obj.pxy(2)+r*sin(t2)];
+                    obj.h_Pt{2}     = plot(x, y, 'g');
+                end
             else
                 for i = 1:obj.pr.n
                     if obj.enableSetSLAM
@@ -386,7 +400,8 @@ classdef ParkingValet < handle
                         for k = 1:obj.FastSLAM.s
                             pos(:,k)    = obj.FastSLAM.particles{k}.Marker{i}.state;
                         end
-                        obj.h_p_particle{i}     = plot(pos(1,:), pos(2,:), 'g.');
+                        obj.h_p_particle{i}     = scatter(pos(1,:), pos(2,:), 1,...
+                            'MarkerEdgeColor',[0 .5 .5], 'MarkerFaceColor',[0.5,0.5,0.5], 'MarkerFaceAlpha', 0.1);
                     end
                     obj.h_p_hat{i}  = plot(obj.p_hat{i}(1), obj.p_hat{i}(2), 'r.', 'MarkerSize', 15);   
                 end
@@ -414,7 +429,8 @@ classdef ParkingValet < handle
                     for k = 1:obj.FastSLAM.s
                         pos(:,k)    = obj.FastSLAM.particles{k}.EKFCamera{i}.state(1:2);
                     end
-                    obj.h_lxy_particle{i}   = plot(pos(1,:), pos(2,:), 'gx');
+                    obj.h_lxy_particle{i}   = scatter(pos(1,:), pos(2,:), 1,...
+                        'MarkerEdgeColor',[0 .5 .5], 'MarkerFaceColor',[0.5,0.5,0.5], 'MarkerFaceAlpha', 0.1);
                 end
             end
         end
@@ -426,9 +442,13 @@ classdef ParkingValet < handle
             
             if obj.isReconstruction
                 if obj.enableSetSLAM
-                    delete(obj.h_Pxy)
-                    delete(obj.h_Pt)
+                    delete(obj.h_Pxy{1})
+                    delete(obj.h_Pt{1})
                 end
+                if obj.enableFastSLAM
+                    delete(obj.h_Pxy{2})
+                    delete(obj.h_Pt{2})
+                end                
                 delete(obj.h_pxy)
                 delete(obj.h_pt)
             else

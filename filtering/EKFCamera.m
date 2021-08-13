@@ -35,7 +35,7 @@ classdef EKFCamera < handle
         % zt is the measurement and camState is the state of the corresponding
         % camera in 3D which yields p_z the possibility of getting the
         % measurement of z
-        function p_z = measurementUpdate(obj, z, markerState)
+        function p_z = measurementUpdate(obj, z, markerState, enableCamUpdate)
             [angle, distance, ~]     = measureModel(markerState, obj.state, obj.Measurable_R, obj.FoV);
             if obj.isStereoVision
                 z_hat   = [angle; distance];
@@ -49,9 +49,11 @@ classdef EKFCamera < handle
             K       = obj.Sigma*H' / Q;
             v       = z - z_hat; % innovation
             v(1)    = wrapToPi(v(1));
-            % Freeze camera state update
-            % obj.state   = obj.state + K*v;
-            % obj.Sigma   = (eye(size(obj.Sigma))-K*H)*obj.Sigma;
+            if enableCamUpdate
+                % Freeze camera state update
+                obj.state   = obj.state + K*v;
+                obj.Sigma   = (eye(size(obj.Sigma))-K*H)*obj.Sigma;
+            end
             % (Q+Q')/2 in case of asymmetric sigma due to numerical error
             p_z         = mvnpdf(z, z_hat, (Q+Q')/2); % Possibility for getting measurement z = {range, bearing}
         end
