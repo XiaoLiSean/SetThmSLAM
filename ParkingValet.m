@@ -1,4 +1,4 @@
-classdef ParkingValet < handle
+classdef ParkingValet < matlab.mixin.Copyable
     properties
         pr; % parameters defined at params.m
         lib; % load 3rdparty functions in Trajectory Planning folder
@@ -56,7 +56,7 @@ classdef ParkingValet < handle
         
         %% Write Plot and Path History to File
         History;    
-        Trajectory;
+        CtrlSignal;
         usePrevTrajectory;
         
     end
@@ -85,7 +85,11 @@ classdef ParkingValet < handle
             obj.lonController       = HelperLongitudinalController('SampleTime', obj.pr.sampleTime);
             % -------------------------------------------------------------
             obj.usePrevTrajectory   = usePreviousTrajectory;
-            obj.TrajectoryHistory   = {};
+            obj.CtrlSignal          = [];
+            obj.History             = {};
+            if obj.usePrevTrajectory
+                obj.History         = load('Path.mat').Historys;
+            end
             if strcmp(cameraType,'stereo')
                 obj.isStereoVision  = true;
                 obj.e_va            = obj.pr.e_va;
@@ -131,22 +135,33 @@ classdef ParkingValet < handle
                 % Plan new path if sub-goal is reached
                 currentPose = obj.vehicleSim.getVehiclePose();
                 currentVel  = obj.vehicleSim.getVehicleVelocity();
-                % Plan for new sub-goal if the current goal is reached
-                while reachGoal
-                    % Break the simulation loop if reached the final destination
-                    if obj.behavioralPlanner.reachedDestination()
-                        return;
+                if obj.usePrevTrajectory   
+                    if time_step > length(obj.History)
+                        obj.saveHistory();
+                        return
+                    end 
+                else
+                    % Plan for new sub-goal if the current goal is reached
+                    while reachGoal
+                        % Break the simulation loop if reached the final destination
+                        if obj.behavioralPlanner.reachedDestination()
+                            % Show vehicle simulation figure and save history
+                            obj.vehicleSim.showFigure();
+                            obj.saveHistory();
+                            return;
+                        end
+                        [nextGoal, speedConfig, isReplanNeeded] = obj.pathPlanner(currentPose, currentVel);
+                        if isReplanNeeded
+                            continue;
+                        else
+                            break;
+                        end
                     end
-                    [nextGoal, speedConfig, isReplanNeeded] = obj.pathPlanner(currentPose, currentVel);
-                    if isReplanNeeded
-                        continue;
-                    else
-                        break;
-                    end
-                end             
+                end
                 % =====================================================
                 % Control Update of Vehicle states and sets
-                if mod(current_time, obj.pr.propTime) < epsilon && current_time ~= 0
+                propRes     = mod(current_time, obj.pr.propTime);
+                if (propRes < epsilon || obj.pr.propTime - propRes < epsilon) && current_time ~= 0
                     obj.vehicleSim.updateKinematics(obj.pr.propTime);
                     deltaXY     = obj.updateNominalStates(currentPose);
                     if obj.enableSetSLAM
@@ -159,20 +174,22 @@ classdef ParkingValet < handle
                 end
                 % =====================================================
                 % Update Control Signal
-                if mod(current_time, obj.pr.sampleTime) < epsilon 
+                sampleRes   = mod(current_time, obj.pr.sampleTime);
+                if sampleRes < epsilon || obj.pr.sampleTime - sampleRes < epsilon
                     % Calculate control signal using stanley(steeringAngle) + pi(accelCmd, decelCmd) controller
                     if obj.usePrevTrajectory
-                        point                                           = obj.TrajectoryHistory{time_step};
+                        point                                           = obj.History{time_step}.CtrlSignal;
                         [accelCmd, decelCmd, steeringAngle, direction]  = deal(point(1),point(2),point(3),point(4));
                     else
                         [accelCmd, decelCmd, steeringAngle, direction]  = obj.Controller(currentPose, currentVel);
-                        obj.TrajectoryHistory{time_step}                = [accelCmd, decelCmd, steeringAngle, direction];
+                        obj.CtrlSignal                                  = [accelCmd, decelCmd, steeringAngle, direction];
                     end
                     obj.vehicleSim.drive(accelCmd, decelCmd, steeringAngle); 
                 end
                 % =====================================================
                 % Measurement Update Sets
-                if mod(current_time, obj.pr.updateTime) < epsilon && current_time ~= 0
+                updateRes   = mod(current_time, obj.pr.updateTime);
+                if (updateRes < epsilon || obj.pr.updateTime - updateRes < epsilon) && current_time ~= 0
                     if obj.isReconstruction
                         obj.updateReconstructedNominalStates()
                     end
@@ -190,7 +207,8 @@ classdef ParkingValet < handle
                 end
                 % =====================================================
                 % Update Plot and Check if nominal states are in corresponding sets
-                if mod(current_time, obj.pr.plotTime) < epsilon
+                plotRes     = mod(current_time, obj.pr.plotTime);
+                if plotRes < epsilon || obj.pr.plotTime - plotRes < epsilon
                     obj.eraseDrawing();
                     obj.drawAll();
                     obj.vehicleSim.updatePlot();
@@ -198,14 +216,14 @@ classdef ParkingValet < handle
                 end
                 % =====================================================
                 % Check if the sub-goal is reached and save history
+                obj.updateHistory(time_step);
                 current_time    = current_time + obj.pr.simLoopDt;
                 time_step       = time_step + 1;
-                reachGoal       = helperGoalChecker(nextGoal, currentPose, currentVel, speedConfig.EndSpeed, direction);
-                obj.saveHistory();
+                if ~obj.usePrevTrajectory 
+                    reachGoal       = helperGoalChecker(nextGoal, currentPose, currentVel, speedConfig.EndSpeed, direction);
+                end
                 % =====================================================
             end
-            % Show vehicle simulation figure
-            obj.vehicleSim.showFigure();
         end
         
         function [accelCmd, decelCmd, steeringAngle, direction] = Controller(obj, currentPose, currentVel)
@@ -495,8 +513,37 @@ classdef ParkingValet < handle
         end
         
         %% Function used to save history of plot and path
+        function updateHistory(obj, time_step)
+            template                    = copy(obj);
+            if time_step ~= 1
+                template.pr                 = [];
+            end
+            template.lib                = [];
+            template.vehicleDim         = [];
+            template.costmap            = [];
+            template.vehicleSim         = [];
+            template.motionPlanner      = [];
+            template.behavioralPlanner  = [];
+            template.pathAnalyzer       = [];
+            template.lonController      = [];
+            template.History            = [];
+            obj.History{time_step}      = template;
+        end
         function saveHistory(obj)
-            return
+            if obj.usePrevTrajectory
+                if obj.isStereoVision
+                    vision  = 'stereo';
+                else
+                    vision  = 'mono';
+                end
+                filename    = "graphData/" + vision + "_eva_" + num2str(obj.pr.e_va) + "_evr_" + num2str(obj.pr.e_vr) + ...
+                                "_ew_" + num2str(obj.pr.e_w(1)) + "_Lt0_" + num2str(obj.pr.epsilon_Lt) + ...
+                                "_Lxy0_" + num2str(obj.pr.epsilon_Lxy) + "_P0_" + num2str(obj.pr.epsilon_P) + '.mat';
+            else
+                filename    = 'Path.mat';
+            end
+            Historys                = obj.History;
+            save(filename, 'Historys');
         end
     end
 end

@@ -1,4 +1,4 @@
-classdef HelperFixedRate < handle
+classdef HelperFixedRate < matlab.mixin.Copyable
     %HelperFixedRate Execute a loop at a fixed frequency
     %   The HelperFixedRate class allows you to run a loop at a fixed
     %   frequency.

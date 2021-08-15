@@ -1,4 +1,4 @@
-classdef EKFCamera < handle
+classdef EKFCamera < matlab.mixin.Copyable
     properties
         state;          % Pose Mean
         Sigma;          % Pose Covariance which is used to update state

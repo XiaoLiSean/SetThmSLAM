@@ -1,4 +1,4 @@
- classdef FastSLAM < handle
+ classdef FastSLAM < matlab.mixin.Copyable
     properties
         n; % number of markers
         m; % number of cameras

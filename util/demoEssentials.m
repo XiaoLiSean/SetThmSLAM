@@ -1,5 +1,5 @@
 %% 3rdparty Supporting Functions
-classdef demoEssentials
+classdef demoEssentials < matlab.mixin.Copyable
     methods
         % *loadParkingLotMapLayers*
         % Load environment map layers for parking lot

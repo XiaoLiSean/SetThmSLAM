@@ -25,7 +25,7 @@
 
 %#codegen
 
-classdef HelperBehavioralPlanner < handle
+classdef HelperBehavioralPlanner < matlab.mixin.Copyable
     
     properties (SetAccess = protected)  
         %RoutePlan Global route plan to be executed.

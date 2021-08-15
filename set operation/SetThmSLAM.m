@@ -1,4 +1,4 @@
-classdef SetThmSLAM < handle
+classdef SetThmSLAM < matlab.mixin.Copyable
     properties
         n; % number of markers
         m; % number of cameras

@@ -31,7 +31,7 @@
 %   See also HelperKinematicVehicle, vehicleCostmap, vehicleDimensions.
 
 % Copyright 2017-2018 The MathWorks, Inc.
-classdef HelperVehicleSimulator < handle
+classdef HelperVehicleSimulator < matlab.mixin.Copyable
     
     properties(Constant, Access = protected)        
         %FigureName Name of simulation figure window

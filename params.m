@@ -1,4 +1,4 @@
-classdef params
+classdef params < matlab.mixin.Copyable
     properties (Constant)
         %% Parking lot parameters
         SpaceDim    = [45; 30]; % Dimension [width/x, height/y] of the parking space in meter

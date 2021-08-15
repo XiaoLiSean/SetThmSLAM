@@ -3,7 +3,7 @@ close all;
 
 %% Initialize Parking Space and Visualization
 cameraType              = 'stereo'; % ['mono'/'stereo']
-usePrevTrajectory       = false; % use previous stored path
+usePrevTrajectory       = true; % use previous stored path
 isReconstruction        = true; % reconstruction and plot the defined vehicle state instead of the markers
 enableCamUpdate         = true; % enable update camera set/particle
 enableCtrlSignal        = false; % enable pass control signal to propagate sets/particles
