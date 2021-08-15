@@ -116,10 +116,10 @@ classdef ParkingValet < matlab.mixin.Copyable
             obj.enableSetSLAM       = enableSetSLAM;
             obj.enableFastSLAM      = enableFastSLAM;
             if enableSetSLAM
-                obj.SetSLAM             = SetThmSLAM(obj.pr, obj.isStereoVision, enableCamUpdate, enableRigidBodyConstraints, isReconstruction, obj.p_hat_rel);
+                obj.SetSLAM             = SetThmSLAM(obj.pr, obj.isStereoVision, enableCamUpdate(1), enableRigidBodyConstraints, isReconstruction, obj.p_hat_rel);
             end
             if enableFastSLAM
-                obj.FastSLAM            = FastSLAM(obj.pr, obj.isStereoVision, enableCamUpdate, isReconstruction);
+                obj.FastSLAM            = FastSLAM(obj.pr, obj.isStereoVision, enableCamUpdate(2), isReconstruction);
             end
         end
         
@@ -363,9 +363,9 @@ classdef ParkingValet < matlab.mixin.Copyable
                     end
                 end
             end
-            if obj.enableFastSLAM                
+            if obj.enableFastSLAM && obj.isReconstruction                
                 for i = 1:obj.pr.n
-                    if in(obj.FastSLAM.P{i}, obj.p_hat{i}) == 0
+                    if in(obj.FastSLAM.Pxy, obj.p_hat{i}) == 0
                         disp('FastSLAM: nominal marker state outside the set');
                     end
                 end

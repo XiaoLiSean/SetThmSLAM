@@ -22,7 +22,6 @@
         isReconstruction; % reconstruction and plot the defined vehicle state instead of the markers
         Pxy; % pxy \in Pxy
         Pt; % pt \in Pt
-        P;
     end
     
     methods
@@ -202,20 +201,19 @@
         
         function updateReconstructedSets(obj)
             points  = zeros(2, obj.s*obj.n);
-            obj.P   = cell(1, obj.n);
+            P       = cell(1, obj.n);
             for i = 1:obj.n
                 for k = 1:obj.s
                     points(:,(i-1)*obj.s+k) = obj.particles{k}.Marker{i}.state;
                 end
-                PiPoints    = points(:,((i-1)*obj.s+1):i*obj.s);
-                obj.P{i}    = mptPolytope.enclosePoints(PiPoints);
+                P{i}.P.V    = points(:,((i-1)*obj.s+1):i*obj.s)';
             end
             obj.Pxy     = mptPolytope.enclosePoints(points);
-            [betaInf, betaSup]  = atan2OverConvPolygons(obj.P{2}, obj.P{1});
+            [betaInf, betaSup]  = atan2OverConvPolygons(P{2}, P{1});
             heading1    = interval(betaInf, betaSup);
-            [betaInf, betaSup]  = atan2OverConvPolygons(obj.P{4}, obj.P{3});
+            [betaInf, betaSup]  = atan2OverConvPolygons(P{4}, P{3});
             heading2    = interval(betaInf, betaSup);
-            obj.Pt      = angleIntervalIntersection(heading1, heading2);
+            obj.Pt      = angleIntervalUnion(heading1, heading2);
         end
     end
 end

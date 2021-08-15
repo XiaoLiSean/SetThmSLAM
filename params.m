@@ -20,9 +20,9 @@ classdef params < matlab.mixin.Copyable
         %% CCTV parameters
         FoV     = 70*pi/180; % Camera Field of View
         l_hat   = [0, -2, 55*pi/180; 10, -2, 7*pi/18; 22.5, -2, pi/2; 35, -2, 11*pi/18; 45, -2, 125*pi/180;
-                   15, 10, -pi/2; 30, 10, -pi/2; 47, 10, pi; 47, 20, pi; 32, 15, 0;
+                   15, 10, -pi/2; 22.5, 10, -pi/2; 30, 10, -pi/2; 47, 10, pi; 47, 20, pi; 32, 15, 0;
                    0, 32, -55*pi/180; 10, 32, -7*pi/18; 22.5, 32, -pi/2; 35, 32, -11*pi/18; 45, 32, -125*pi/180;
-                   15, 20, pi/2; 30, 20, pi/2; -2, 10, 0; -2, 20, 0; 13, 15, -pi;]'; % Camera Nominal State [x (m);y (m);theta (rad)]  
+                   15, 20, pi/2; 22.5, 20, pi/2; 30, 20, pi/2; -2, 10, 0; -2, 20, 0; 13, 15, -pi;]'; % Camera Nominal State [x (m);y (m);theta (rad)]  
         m           = size(params.l_hat, 2); % Numbers of total cameras
         Measurable_R    = 20; % Markers within Measurable_R are measurable
         e_va        = deg2rad(5); % angle measurement noise bound in rad
@@ -33,7 +33,7 @@ classdef params < matlab.mixin.Copyable
         propTime    = 0.01; % [sec] [0.01 default] dt of adjacent set propagation (k --> k+1) during kinametics update (should be the smallest among the four)
         sampleTime  = 0.05; % [sec] [0.05 default] pi longitudinal controller sample time for the integral
         updateTime  = 0.3; % [sec] dt of adjacent measurement set update (k --> k+1)
-        plotTime    = 0.1; % [sec] time interval to update plot
+        plotTime    = 2; % [sec] time interval to update plot
         
         %% Ego RC car parameters (refer to vehicleDimensions in MATLAB Doc.)
         carLength   = 4.0; % car length in meters
@@ -76,7 +76,7 @@ classdef params < matlab.mixin.Copyable
         ring_sector_num         = 8; % sector the constraint ring to parts as convex polygons
         
         %% Variables for setting up particle filter
-        particle_num    = 200; % number of particles
+        particle_num    = 100; % number of particles
         
     end
     %% Uncertainty set Properties
