@@ -13,6 +13,7 @@ classdef ParkingValet < matlab.mixin.Copyable
         FastSLAM;
         enableFastSLAM;
         enableSetSLAM;
+        enableCtrlSignalProp;
         
         %% Measurement information
         isStereoVision;
@@ -55,15 +56,13 @@ classdef ParkingValet < matlab.mixin.Copyable
         h_p_particle; % marker particles
         
         %% Write Plot and Path History to File
-        History;    
-        CtrlSignal;
-        usePrevTrajectory;
+        History;
         
     end
     methods
         %% Initialization
         function obj = ParkingValet(cameraType, enableCamUpdate, enableFastSLAM, enableSetSLAM,...
-                                        enableRigidBodyConstraints, isReconstruction, usePreviousTrajectory)
+                                        enableRigidBodyConstraints, isReconstruction, enableCtrlSignal)
             addpath('./util')
             addpath('./set operation')
             addpath('./filtering')
@@ -84,12 +83,7 @@ classdef ParkingValet < matlab.mixin.Copyable
             obj.behavioralPlanner   = HelperBehavioralPlanner(obj.pr.routePlan, obj.pr.maxSteeringAngle);
             obj.lonController       = HelperLongitudinalController('SampleTime', obj.pr.sampleTime);
             % -------------------------------------------------------------
-            obj.usePrevTrajectory   = usePreviousTrajectory;
-            obj.CtrlSignal          = [];
             obj.History             = {};
-            if obj.usePrevTrajectory
-                obj.History         = load('Path.mat').Historys;
-            end
             if strcmp(cameraType,'stereo')
                 obj.isStereoVision  = true;
                 obj.e_va            = obj.pr.e_va;
@@ -113,49 +107,42 @@ classdef ParkingValet < matlab.mixin.Copyable
                 obj.updateReconstructedNominalStates();
             end
             % -------------------------------------------------------------
-            obj.enableSetSLAM       = enableSetSLAM;
-            obj.enableFastSLAM      = enableFastSLAM;
+            obj.enableSetSLAM           = enableSetSLAM;
+            obj.enableFastSLAM          = enableFastSLAM;
+            obj.enableCtrlSignalProp    = enableCtrlSignal;
             if enableSetSLAM
-                obj.SetSLAM             = SetThmSLAM(obj.pr, obj.isStereoVision, enableCamUpdate, enableRigidBodyConstraints, isReconstruction, obj.p_hat_rel);
+                obj.SetSLAM             = SetThmSLAM(obj.pr, obj.isStereoVision, enableCamUpdate(1), enableRigidBodyConstraints, isReconstruction, obj.p_hat_rel);
             end
             if enableFastSLAM
-                obj.FastSLAM            = FastSLAM(obj.pr, obj.isStereoVision, enableCamUpdate, isReconstruction);
+                obj.FastSLAM            = FastSLAM(obj.pr, obj.isStereoVision, enableCamUpdate(2), isReconstruction);
             end
         end
         
-        %% Derived from Parking Valet Example
+        %% Simulation functions
         function simulation(obj)
             current_time    = 0;
             time_step       = 1;
             reachGoal       = true; % for initial planning
-            epsilon         = 0.01*obj.pr.simLoopDt; % take care of numerical error in computation
+            epsilon         = 0.9*obj.pr.simLoopDt; % take care of numerical error in computation
             % Simulation loop for every obj.pr.simLoopDt
             while true
                 % =====================================================
                 % Plan new path if sub-goal is reached
                 currentPose = obj.vehicleSim.getVehiclePose();
                 currentVel  = obj.vehicleSim.getVehicleVelocity();
-                if obj.usePrevTrajectory   
-                    if time_step > length(obj.History)
-                        obj.saveHistory();
-                        return
-                    end 
-                else
-                    % Plan for new sub-goal if the current goal is reached
-                    while reachGoal
-                        % Break the simulation loop if reached the final destination
-                        if obj.behavioralPlanner.reachedDestination()
-                            % Show vehicle simulation figure and save history
-                            obj.vehicleSim.showFigure();
-                            obj.saveHistory();
-                            return;
-                        end
-                        [nextGoal, speedConfig, isReplanNeeded] = obj.pathPlanner(currentPose, currentVel);
-                        if isReplanNeeded
-                            continue;
-                        else
-                            break;
-                        end
+                % Plan for new sub-goal if the current goal is reached
+                while reachGoal
+                    % Break the simulation loop if reached the final destination
+                    if obj.behavioralPlanner.reachedDestination()
+                        % Show vehicle simulation figure and save history
+                        obj.vehicleSim.showFigure();
+                        return;
+                    end
+                    [nextGoal, speedConfig, isReplanNeeded] = obj.pathPlanner(currentPose, currentVel);
+                    if isReplanNeeded
+                        continue;
+                    else
+                        break;
                     end
                 end
                 % =====================================================
@@ -168,8 +155,11 @@ classdef ParkingValet < matlab.mixin.Copyable
                         obj.SetSLAM.propagateSets();
                     end
                     if obj.enableFastSLAM
-                        obj.FastSLAM.propagateParticles();
-                        % obj.FastSLAM.propagateParticlesWithDistance(deltaXY)
+                        if obj.enableCtrlSignalProp(2)
+                            obj.FastSLAM.propagateParticlesWithDistance(deltaXY)
+                        else
+                            obj.FastSLAM.propagateParticles();
+                        end
                     end
                 end
                 % =====================================================
@@ -177,13 +167,7 @@ classdef ParkingValet < matlab.mixin.Copyable
                 sampleRes   = mod(current_time, obj.pr.sampleTime);
                 if sampleRes < epsilon || obj.pr.sampleTime - sampleRes < epsilon
                     % Calculate control signal using stanley(steeringAngle) + pi(accelCmd, decelCmd) controller
-                    if obj.usePrevTrajectory
-                        point                                           = obj.History{time_step}.CtrlSignal;
-                        [accelCmd, decelCmd, steeringAngle, direction]  = deal(point(1),point(2),point(3),point(4));
-                    else
-                        [accelCmd, decelCmd, steeringAngle, direction]  = obj.Controller(currentPose, currentVel);
-                        obj.CtrlSignal                                  = [accelCmd, decelCmd, steeringAngle, direction];
-                    end
+                    [accelCmd, decelCmd, steeringAngle, direction]  = obj.Controller(currentPose, currentVel);
                     obj.vehicleSim.drive(accelCmd, decelCmd, steeringAngle); 
                 end
                 % =====================================================
@@ -219,24 +203,97 @@ classdef ParkingValet < matlab.mixin.Copyable
                 obj.updateHistory(time_step);
                 current_time    = current_time + obj.pr.simLoopDt;
                 time_step       = time_step + 1;
-                if ~obj.usePrevTrajectory 
-                    reachGoal       = helperGoalChecker(nextGoal, currentPose, currentVel, speedConfig.EndSpeed, direction);
-                end
+                reachGoal       = helperGoalChecker(nextGoal, currentPose, currentVel, speedConfig.EndSpeed, direction);
                 % =====================================================
             end
         end
         
+        function simulateHistory(obj, prevHistory)
+            % Draw Trajectory
+            trajectory      = zeros(length(prevHistory), 2);
+            for i = 1:length(prevHistory)
+                state               = prevHistory{i}.p_car;
+                trajectory(i,:)     = [state(1), state(2)];
+            end            
+            plot(trajectory(:,1), trajectory(:,2), 'LineWidth', 3)
+            current_time    = 0;
+            time_step       = 1;
+            epsilon         = 0.9*obj.pr.simLoopDt; % take care of numerical error in computation
+            % Simulation loop for every obj.pr.simLoopDt
+            while true
+                % =====================================================
+                % Plan new path if sub-goal is reached
+                if time_step > length(prevHistory)
+                    return
+                end
+                currentPose = prevHistory{time_step}.p_car;
+                % =====================================================
+                % Control Update of Vehicle states and sets
+                propRes     = mod(current_time, obj.pr.propTime);
+                if (propRes < epsilon || obj.pr.propTime - propRes < epsilon) && current_time ~= 0
+                    pose_car    = [currentPose(1), currentPose(2), rad2deg(currentPose(3))];
+                    obj.vehicleSim.setVehiclePose(pose_car);
+                    deltaXY     = obj.updateNominalStates(pose_car);
+                    if obj.enableSetSLAM
+                        obj.SetSLAM.propagateSets();
+                    end
+                    if obj.enableFastSLAM
+                        if obj.enableCtrlSignalProp(2)
+                            obj.FastSLAM.propagateParticlesWithDistance(deltaXY)
+                        else
+                            obj.FastSLAM.propagateParticles();
+                        end
+                    end
+                end
+                % =====================================================
+                % Measurement Update Sets
+                updateRes   = mod(current_time, obj.pr.updateTime);
+                if (updateRes < epsilon || obj.pr.updateTime - updateRes < epsilon) && current_time ~= 0
+                    if obj.isReconstruction
+                        obj.updateReconstructedNominalStates()
+                    end
+                    obj.updateMeasurements();
+                    tic
+                    if obj.enableSetSLAM
+                        obj.SetSLAM.getMeasureAndMatching(obj.Ma, obj.Mr, obj.A_hat);
+                        obj.SetSLAM.updateSets();
+                    end
+                    if obj.enableFastSLAM
+                        obj.FastSLAM.getMeasureAndMatching(obj.Ma, obj.Mr, obj.A_hat);
+                        obj.FastSLAM.updateParticles();
+                    end
+                    toc
+                end
+                % =====================================================
+                % Update Plot and Check if nominal states are in corresponding sets
+                plotRes     = mod(current_time, obj.pr.plotTime);
+                if plotRes < epsilon || obj.pr.plotTime - plotRes < epsilon 
+                    obj.eraseDrawing();
+                    obj.drawAll();
+                    obj.vehicleSim.updatePlot();
+                    obj.check_guaranteed_property()
+                end
+                % =====================================================
+                % Check if the sub-goal is reached and save history
+                obj.updateHistory(time_step);
+                current_time    = current_time + obj.pr.simLoopDt;
+                time_step       = time_step + 1;
+                % =====================================================
+            end
+        end
+        
+        %% Function Derived from Parking Valet Example
         function [accelCmd, decelCmd, steeringAngle, direction] = Controller(obj, currentPose, currentVel)
             % Find the reference pose on the path and the corresponding velocity
             [refPose, refVel, direction] = obj.pathAnalyzer(currentPose, currentVel);
-            
+
             % Update driving direction for the simulator
             obj.vehicleSim.updateDrivingDirection(direction);
-            
+
             % Compute steering command
             steeringAngle   = lateralControllerStanley(refPose, currentPose, currentVel, ...
                 'Direction', direction, 'Wheelbase', obj.vehicleDim.Wheelbase);
-            
+
             % Compute acceleration and deceleration commands
             obj.lonController.Direction     = direction;
             [accelCmd, decelCmd]            = obj.lonController(refVel, currentVel);
@@ -363,9 +420,9 @@ classdef ParkingValet < matlab.mixin.Copyable
                     end
                 end
             end
-            if obj.enableFastSLAM                
+            if obj.enableFastSLAM && obj.isReconstruction                
                 for i = 1:obj.pr.n
-                    if in(obj.FastSLAM.P{i}, obj.p_hat{i}) == 0
+                    if in(obj.FastSLAM.Pxy, obj.p_hat{i}) == 0
                         disp('FastSLAM: nominal marker state outside the set');
                     end
                 end
@@ -517,31 +574,38 @@ classdef ParkingValet < matlab.mixin.Copyable
             template                    = copy(obj);
             if time_step ~= 1
                 template.pr                 = [];
+                template.costmap            = [];
+                template.lxy_hat            = [];
+                template.lt_hat             = [];
+                template.p_hat_rel          = [];
             end
             template.lib                = [];
             template.vehicleDim         = [];
-            template.costmap            = [];
             template.vehicleSim         = [];
             template.motionPlanner      = [];
             template.behavioralPlanner  = [];
             template.pathAnalyzer       = [];
             template.lonController      = [];
             template.History            = [];
+
+
+            template.h_p_hat            = [];
+            template.h_Lxy              = [];
+            template.h_Lt           = [];
+            template.h_P= [];
+            template.h_pxy= [];
+            template.h_pt= [];
+            template.h_Pxy= [];
+            template.h_Pt= [];
+            template.h_P_ell= [];
+            template.h_Lxy_ell= [];
+            template.h_Lt_ell= [];
+            template.h_lxy_particle= [];
+            template.h_p_particle= [];
+            
+            template.FastSLAM           = copy(obj.FastSLAM);
+            template.SetSLAM            = copy(obj.SetSLAM);
             obj.History{time_step}      = template;
-        end
-        function saveHistory(obj)
-            if obj.usePrevTrajectory
-                if obj.isStereoVision
-                    vision  = 'stereo';
-                else
-                    vision  = 'mono';
-                end
-                filename    = vision + "_eva_" + num2str(obj.e_va) 
-            else
-                filename    = 'Path.mat';
-            end
-            Historys                = obj.History;
-            save(filename, 'Historys');
         end
     end
 end

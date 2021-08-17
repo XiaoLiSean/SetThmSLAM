@@ -263,7 +263,7 @@ classdef HelperVehicleSimulator < matlab.mixin.Copyable
         
         %------------------------------------------------------------------
         function updateKinematics(obj, timeStep)
-            %updateKinematicsUpdate The kinematic model of the vehicle
+            %dUpdate The kinematic model of the vehicle
             
             obj.Vehicle.updateKinematics(timeStep);
             obj.updateTrajectoryBuffer(obj.getVehiclePose());

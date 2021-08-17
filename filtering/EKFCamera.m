@@ -8,6 +8,11 @@ classdef EKFCamera < matlab.mixin.Copyable
         isStereoVision;
         Measurable_R; % % Markers within Measurable_R are measurable
         FoV; % Camera Field of View
+        
+        %% hard constraint on camera states
+        Lxy;
+        Lt;
+        sampledCamStates;
     end
     
     methods
@@ -22,14 +27,10 @@ classdef EKFCamera < matlab.mixin.Copyable
                 obj.M   = (pr.e_va)^2;
             end
             % initial mean and covariance
-            obj.state   = sampledCamStates;
-            % initialize the Sigma with 1-sigma circle bound the uncertanty
-            % set of pr.Lxy{ithCamera}
-            area        = volume(pr.Lxy{ithCamera});
-            radius      = sqrt(area/pi);
-            sigma_xy    = radius;
-            sigma_t     = volume(pr.Lt{ithCamera})/2;
-            obj.Sigma   = diag([sigma_xy, sigma_xy, sigma_t].^2);
+            obj.Lxy         = pr.Lxy{ithCamera};
+            obj.Lt          = pr.Lt{ithCamera};
+            obj.sampledCamStates    = sampledCamStates;
+            obj.reinitialMeanAndVar()
         end
         
         % zt is the measurement and camState is the state of the corresponding
@@ -49,13 +50,30 @@ classdef EKFCamera < matlab.mixin.Copyable
             K       = obj.Sigma*H' / Q;
             v       = z - z_hat; % innovation
             v(1)    = wrapToPi(v(1));
-            if enableCamUpdate
-                % Freeze camera state update
-                obj.state   = obj.state + K*v;
-                obj.Sigma   = (eye(size(obj.Sigma))-K*H)*obj.Sigma;
-            end
             % (Q+Q')/2 in case of asymmetric sigma due to numerical error
             p_z         = mvnpdf(z, z_hat, (Q+Q')/2); % Possibility for getting measurement z = {range, bearing}
+            % Update camera state
+            if enableCamUpdate
+                obj.state   = obj.state + K*v;
+                obj.Sigma   = (eye(size(obj.Sigma))-K*H)*obj.Sigma;
+                if in(obj.Lxy, obj.state(1:2)) == 0 ||...
+                    (in(obj.Lt, wrapToPi(obj.state(3))) == 0 && in(obj.Lt, wrapTo2Pi(obj.state(3))) == 0)
+                    obj.reinitialMeanAndVar();
+                    return;
+                end
+            end
+
+        end
+        
+        function reinitialMeanAndVar(obj)
+            obj.state   = obj.sampledCamStates;
+            % initialize the Sigma with 1-sigma circle bound the uncertanty
+            % set of pr.Lxy{ithCamera}
+            area        = volume(obj.Lxy);
+            radius      = sqrt(area/pi);
+            sigma_xy    = radius;
+            sigma_t     = volume(obj.Lt)/2;
+            obj.Sigma   = diag([sigma_xy, sigma_xy, sigma_t].^2);
         end
     end
 end
