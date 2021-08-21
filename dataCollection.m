@@ -38,23 +38,32 @@ for k = 1:length(e_mesh)
         if k ~= 1 && i == 1
             continue
         end
-        disp('Data collection '+cameraType+num2str(k)+'_'+num2str(i)+'_'+num2str(e_mesh{k}(i)))
         pr{k}   = e_mesh{k}(i);
         [e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P]    = deal(pr{:});
+        if exist(getFileName(cameraType, 0.075, e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P), 'file') == 2
+            disp('Skip '+cameraType+num2str(k)+'_'+num2str(i)+'_'+num2str(e_mesh{k}(i)))
+            continue
+        else
+            disp('Data collection '+cameraType+num2str(k)+'_'+num2str(i)+'_'+num2str(e_mesh{k}(i)))
+        end
         parameters.resetParams(e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P);
         PV                      = ParkingValet(parameters, cameraType, enableCamUpdate, enableFastSLAM, enableSetSLAM,...
                                                enableRBConstraints, isReconstruction, enableCtrlSignal, saveHistoryConcise);
         PV.simulateHistory(History);
-        saveHistory(PV, cameraType)
+        saveHistory(PV, cameraType, 0.075, e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P)
     end
 end
 end
 
 %% Support Function
-function saveHistory(PV, cameraType)
-    filename    = "graphData/" + cameraType + "_eva_" + num2str(PV.pr.e_va) + "_evr_" + num2str(PV.pr.e_vr) + ...
-                    "_ew_" + num2str(PV.pr.e_w(1)) + "_Lt0_" + num2str(PV.pr.epsilon_Lt) + ...
-                    "_Lxy0_" + num2str(PV.pr.epsilon_Lxy) + "_P0_" + num2str(PV.pr.epsilon_P) + '.mat';
+function saveHistory(PV, cameraType, e_w, e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P)
+    filename    = getFileName(cameraType, e_w, e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P);
     Historys    = PV.History;
     save(filename, 'Historys');
+end
+
+function filename = getFileName(cameraType, e_w, e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P)
+    filename    = "graphData/" + cameraType + "_eva_" + num2str(e_va) + "_evr_" + num2str(e_vr) + ...
+                    "_ew_" + num2str(e_w(1)) + "_Lt0_" + num2str(epsilon_Lt) + ...
+                    "_Lxy0_" + num2str(epsilon_Lxy) + "_P0_" + num2str(epsilon_P) + '.mat';
 end
