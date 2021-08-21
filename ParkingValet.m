@@ -57,16 +57,18 @@ classdef ParkingValet < matlab.mixin.Copyable
         
         %% Write Plot and Path History to File
         History;
-        
+        saveHistoryConcise;
+        isSetSLAMGuaranteed;
+        isFastSLAMGuaranteed;
     end
     methods
         %% Initialization
-        function obj = ParkingValet(cameraType, enableCamUpdate, enableFastSLAM, enableSetSLAM,...
-                                        enableRigidBodyConstraints, isReconstruction, enableCtrlSignal)
+        function obj = ParkingValet(parameters, cameraType, enableCamUpdate, enableFastSLAM, enableSetSLAM,...
+                                        enableRigidBodyConstraints, isReconstruction, enableCtrlSignal, saveHistoryConcise)
             addpath('./util')
             addpath('./set operation')
             addpath('./filtering')
-            obj.pr  = params;
+            obj.pr  = parameters;
             % -------------------------------------------------------------
             obj.lib         = demoEssentials;
             obj.vehicleDim  = obj.pr.carDims;
@@ -84,6 +86,7 @@ classdef ParkingValet < matlab.mixin.Copyable
             obj.lonController       = HelperLongitudinalController('SampleTime', obj.pr.sampleTime);
             % -------------------------------------------------------------
             obj.History             = {};
+            obj.saveHistoryConcise  = saveHistoryConcise;
             if strcmp(cameraType,'stereo')
                 obj.isStereoVision  = true;
                 obj.e_va            = obj.pr.e_va;
@@ -196,8 +199,8 @@ classdef ParkingValet < matlab.mixin.Copyable
                     obj.eraseDrawing();
                     obj.drawAll();
                     obj.vehicleSim.updatePlot();
-                    obj.check_guaranteed_property()
                 end
+                obj.check_guaranteed_property();
                 % =====================================================
                 % Check if the sub-goal is reached and save history
                 obj.updateHistory(time_step);
@@ -253,7 +256,7 @@ classdef ParkingValet < matlab.mixin.Copyable
                         obj.updateReconstructedNominalStates()
                     end
                     obj.updateMeasurements();
-                    tic
+                    %tic
                     if obj.enableSetSLAM
                         obj.SetSLAM.getMeasureAndMatching(obj.Ma, obj.Mr, obj.A_hat);
                         obj.SetSLAM.updateSets();
@@ -262,7 +265,7 @@ classdef ParkingValet < matlab.mixin.Copyable
                         obj.FastSLAM.getMeasureAndMatching(obj.Ma, obj.Mr, obj.A_hat);
                         obj.FastSLAM.updateParticles();
                     end
-                    toc
+                    %toc
                 end
                 % =====================================================
                 % Update Plot and Check if nominal states are in corresponding sets
@@ -271,11 +274,15 @@ classdef ParkingValet < matlab.mixin.Copyable
                     obj.eraseDrawing();
                     obj.drawAll();
                     obj.vehicleSim.updatePlot();
-                    obj.check_guaranteed_property()
                 end
+                obj.check_guaranteed_property()
                 % =====================================================
                 % Check if the sub-goal is reached and save history
-                obj.updateHistory(time_step);
+                if obj.saveHistoryConcise
+                    obj.updateHistoryConcise(time_step);
+                else
+                    obj.updateHistory(time_step);
+                end
                 current_time    = current_time + obj.pr.simLoopDt;
                 time_step       = time_step + 1;
                 % =====================================================
@@ -408,22 +415,27 @@ classdef ParkingValet < matlab.mixin.Copyable
         %% function used to check if the nominal state is in the corresponding sets
         function check_guaranteed_property(obj)
             if obj.enableSetSLAM
+                obj.isSetSLAMGuaranteed     = true;
                 for i = 1:obj.pr.n
                     if in(obj.SetSLAM.P{i}, obj.p_hat{i}) == 0
+                        obj.isSetSLAMGuaranteed     = false;
                         error('nominal state outside the set');
                     end
                 end
                 for i = 1:obj.pr.m
                     if in(obj.SetSLAM.Lxy{i}, obj.lxy_hat{i}) == 0 ||...
                         (in(obj.SetSLAM.Lt{i}, wrapToPi(obj.lt_hat{i})) == 0 && in(obj.SetSLAM.Lt{i}, wrapTo2Pi(obj.lt_hat{i})) == 0)
+                        obj.isSetSLAMGuaranteed     = false;
                         error('nominal state outside the set');
                     end
                 end
             end
-            if obj.enableFastSLAM && obj.isReconstruction                
+            if obj.enableFastSLAM && obj.isReconstruction     
+                obj.isFastSLAMGuaranteed 	= true;           
                 for i = 1:obj.pr.n
                     if in(obj.FastSLAM.Pxy, obj.p_hat{i}) == 0
-                        disp('FastSLAM: nominal marker state outside the set');
+                        % disp('FastSLAM: nominal marker state outside the set');     
+                        obj.isFastSLAMGuaranteed    = false;
                     end
                 end
             end
@@ -572,7 +584,7 @@ classdef ParkingValet < matlab.mixin.Copyable
         %% Function used to save history of plot and path
         function updateHistory(obj, time_step)
             if time_step == 1
-                template.pr         = obj.pr;
+                template.pr         = copy(obj.pr);
                 template.costmap    = obj.costmap;
             end
             template.p_hat  = obj.p_hat;
@@ -584,10 +596,26 @@ classdef ParkingValet < matlab.mixin.Copyable
             template.SetSLAM.P      = obj.SetSLAM.P;
             template.SetSLAM.Pxy    = obj.SetSLAM.Pxy;
             template.SetSLAM.Pt     = obj.SetSLAM.Pt;
+            template.SetSLAM.isIn   = obj.isSetSLAMGuaranteed;
             template.FastSLAM.mu    = obj.FastSLAM.mu;
             template.FastSLAM.Sigma = obj.FastSLAM.Sigma;
             template.FastSLAM.Pxy   = obj.FastSLAM.Pxy;
             template.FastSLAM.Pt    = obj.FastSLAM.Pt;
+            template.FastSLAM.isIn  = obj.isFastSLAMGuaranteed;
+            obj.History{time_step}  = template;
+        end
+        
+        
+        function updateHistoryConcise(obj, time_step)            
+            if time_step == 1
+                template.pr         = copy(obj.pr);
+            end
+            template.SetSLAM.Pxy    = volume(obj.SetSLAM.Pxy);
+            template.SetSLAM.Pt     = volume(obj.SetSLAM.Pt);
+            template.SetSLAM.isIn   = obj.isSetSLAMGuaranteed;
+            template.FastSLAM.Pxy   = volume(obj.FastSLAM.Pxy);
+            template.FastSLAM.Pt    = volume(obj.FastSLAM.Pt);
+            template.FastSLAM.isIn  = obj.isFastSLAMGuaranteed;
             obj.History{time_step}  = template;
         end
     end

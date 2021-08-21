@@ -37,6 +37,19 @@ function C = angleIntervalIntersection(A, B)
         C   = C{1};
     else
         C   = and(C{1}, C{2});
+        if isempty(C)
+            C1  = intervalWrapToPi(and(A,B));
+            C2  = intervalWrapTo2Pi(and(A,B));    
+            if length(C1) == 1
+                C   = C1;
+                return
+            elseif length(C2) == 1
+                C   = C2;
+                return
+            else
+                warning('Intersection sets number larger than 1')
+            end
+        end
         warning('Intersection sets number larger than 1')
         A
         B
