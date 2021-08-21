@@ -59,7 +59,7 @@ for i_cam = 1:length(cameraTypes)
         rSet    = (max(ySet, [], 2) - min(ySet, [], 2))/2;
         rFast   = (max(yFast, [], 2) - min(yFast, [], 2))/2;
         errorbar(x,median(ySet, 2),rSet,'ro');
-        errorbar(x,median(yFast, 2),rFast,'bo');
+        errorbar(x,median(yFast, 2),rFast,'bo');   
     end
 end
 %% Support functions
