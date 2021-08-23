@@ -7,6 +7,8 @@ addpath('../filtering')
 Historys  	= load('snapshot_stereo_eva_0.087266_evr_0.1_ew_0.075_Lt0_0.087266_Lxy0_0.1_P0_0.5.mat').Historys;
 
 figure(1)
+pr      = params;
+Historys{1}.pr.carDims  = pr.carDims;
 set(gcf,'color','w'); 
 showMap(Historys{1}.pr, Historys{1}.costmap)
 showSnapshots(Historys)
