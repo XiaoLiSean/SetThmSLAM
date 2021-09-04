@@ -36,8 +36,8 @@ for i_cam = 1:length(cameraTypes)
     for k = 1:length(e_mesh)
         pr      = {e_vas(1), e_vrs(1), epsilon_Ps(1), epsilon_Lts(1), epsilon_Lxys(1)};
         x       = e_mesh{k};
-        yFast   = zeros(num, timeSteps-initialDT);
-        ySet   = zeros(num, timeSteps-initialDT);
+        yFast   = zeros(num, 1);
+        ySet   = zeros(num, 1);
         if k == 2 && strcmp(camType,'mono') 
             continue
         end
@@ -52,44 +52,22 @@ for i_cam = 1:length(cameraTypes)
             end
             data    = load(filename).Historys;
             History = cellHistory2Arr(data, initialDT);
-            ySet(i,:)   = History.SetSLAM.Pxy/vehicleVolume;
-            yFast(i,:)  = History.FastSLAM.Pxy/vehicleVolume;
+            ySet(i) = sum(History.SetSLAM.isIn)/(timeSteps-initialDT)*100;
+            yFast(i)= sum(History.FastSLAM.isIn)/(timeSteps-initialDT)*100;
         end
-        cSet    = (max(ySet, [], 2) + min(ySet, [], 2))/2;
-        cFast   = (max(yFast, [], 2) + min(yFast, [], 2))/2;
-        rSet    = (max(ySet, [], 2) - min(ySet, [], 2))/2;
-        rFast   = (max(yFast, [], 2) - min(yFast, [], 2))/2; 
-        plot(x, cSet, 'r', 'LineWidth', 1); hold on;
-        plot(x, cFast, 'b', 'LineWidth', 1);
-        % draw shaded area
-        patchX  = [x,flip(x)];
-        setPy   = [cSet-rSet; flip(cSet+rSet)]';       
-        FastPy  = [cFast-rFast; flip(cFast+rFast)]';
-        patch(patchX, setPy, 'red', 'EdgeColor','red', 'FaceAlpha',.2, 'EdgeAlpha',.4); 
-        patch(patchX, FastPy, 'blue', 'EdgeColor','blue', 'FaceAlpha',.2, 'EdgeAlpha',.4);
+        plot(x, ySet, 'r', 'LineWidth', 3); hold on;
+        plot(x, yFast, 'b', 'LineWidth', 3);
         % Set axis limits and labels
         xlim([min(x), max(x)]); ylim([min([ySet, yFast], [], 'all'), max([ySet, yFast], [], 'all')]);
         set(gca,'FontSize', 15); % change ticks label font size
         xlabel(labels(k), 'Interpreter', 'latex', 'FontSize', 25); 
-        yline(1, 'r--', 'LineWidth', 2);
         xticks(linspace(e_mesh{k}(1), e_mesh{k}(end), 6));
         xticklabels(string(round(linspace(yTickLabels{k}(1), yTickLabels{k}(end), 6)*100)/100));
-        if k == 3
-            figure(2);
-            set(gcf,'color','w');
-            subplot(2,1,i_cam);
-            plot(x, cSet, 'r', 'LineWidth', 1); hold on;
-            patch(patchX, setPy, 'red', 'EdgeColor','red', 'FaceAlpha',.2, 'EdgeAlpha',.4); 
-            xticks(linspace(e_mesh{k}(1), e_mesh{k}(end), 6));
-            xticklabels(string(round(linspace(yTickLabels{k}(1), yTickLabels{k}(end), 6)*100)/100));
-            set(gca,'FontSize', 15);
-            figure(1);
-        end
     end
 end
 ax  = axes(fig,'visible','off');
 ax.YLabel.Visible   ='on';
-ylabel(ax, {'$V(P_{xy})/(c_w\cdot c_l)$ [$m^2$]', ''}, 'Interpreter','latex', 'FontSize', 25);
+ylabel(ax, {'Time percentage of vehicle body in $P_{xy}$ [$\%$]', ''}, 'Interpreter','latex', 'FontSize', 25);
 currentFigure   = gcf;
 title(currentFigure.Children(end), 'Monocular Camera', 'Interpreter', 'latex', 'FontSize', 25);
 title(currentFigure.Children(6), 'Stereo Camera', 'Interpreter', 'latex', 'FontSize', 25);

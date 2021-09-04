@@ -9,7 +9,7 @@ addpath('../filtering')
 %% Change Parameters
 parameters      = params;
 cameraTypes     = ["mono", "stereo"];
-num             = 9;
+num             = 25;
 e_vas           = deg2rad(linspace(0.1, 10, num));
 e_vrs           = linspace(0.01, 0.5, num);
 epsilon_Ps      = linspace(0.1, 5, num);

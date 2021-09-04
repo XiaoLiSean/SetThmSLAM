@@ -3,7 +3,7 @@ close all;
 
 %% Initialize Parking Space and Visualization
 cameraType              = 'stereo'; % ['mono'/'stereo']
-saveHistoryConcise      = false; % disable save full history of the simulation
+saveHistoryConcise      = true; % disable save full history of the simulation
 usePrevTrajectory       = true; % use previous stored path
 isReconstruction        = true; % reconstruction and plot the defined vehicle state instead of the markers
 enableCamUpdate         = [false, true]; % enable update camera set/particle
@@ -12,7 +12,7 @@ enableCtrlSignal        = [false, true]; % enable pass control signal to propaga
 enableSetSLAM           = true;
 enableRBConstraints     = true; % [true/false] to enable rigid body constraint in set update
 % =======================================================
-enableFastSLAM          = true;
+enableFastSLAM          = false;
 % =======================================================
 PV                      = ParkingValet(params, cameraType, enableCamUpdate, enableFastSLAM, enableSetSLAM,...
                                         enableRBConstraints, isReconstruction, enableCtrlSignal, saveHistoryConcise);

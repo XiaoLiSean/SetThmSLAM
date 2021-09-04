@@ -7,6 +7,7 @@ addpath('../util')
 
 %% Main
 figure(1);
+set(gcf,'color','w');
 pr          = params;
 SetSLAM     = SetThmSLAM(pr, true, false, false, false, []);
 fid         = fopen('calibrationData/calibratedData.txt','rt');
@@ -15,11 +16,17 @@ is_initial  = true;
 %% plot the field and lidars
 plot(pr.Omega_L); hold on;
 for i = 1:pr.m
-    plot(pr.l_hat(1,i), pr.l_hat(2,i), 'rx', 'MarkerSize', 15);
-    plot([pr.l_hat(1,i), pr.l_hat(1,i)+0.25*pr.Measurable_R*cos(pr.l_hat(3,i))],...
-         [pr.l_hat(2,i), pr.l_hat(2,i)+0.25*pr.Measurable_R*sin(pr.l_hat(3,i))], 'r--');
+    hlxy    = plot(pr.l_hat(1,i), pr.l_hat(2,i), 'r.', 'MarkerSize', 15, 'LineWidth', 2);
+    hlt     = plot([pr.l_hat(1,i), pr.l_hat(1,i)+0.25*pr.Measurable_R*cos(pr.l_hat(3,i))],...
+                [pr.l_hat(2,i), pr.l_hat(2,i)+0.25*pr.Measurable_R*sin(pr.l_hat(3,i))], 'r--', 'LineWidth', 2);
 end
 %% Simulation main
+currentStep = 0;
+plotT0      = 250;
+plotTf      = 350;
+plotDStep   = 25;
+trajectory  = [];
+unitP       = decomposeCirc2ConvPolygons([0,0], 0.12, 12);
 while true
     % read single data at a certain timestamp from recorded scream
     newline     = fgetl(fid);
@@ -54,31 +61,49 @@ while true
     end
     toc
     % visualization
+    if currentStep > plotT0 && currentStep < plotTf
+        trajectory  = [trajectory; p_hat(1), p_hat(2)];
+        plot(trajectory(:,1), trajectory(:,2), 'k--', 'LineWidth', 1.5);
+    end
     if dt ~= 0
-        delete(h1);
-        delete(h2);
-        for i = 1:pr.m
-            delete(hxy{i});
-            delete(ht{i});
+        if (mod(currentStep, plotDStep) < plotDStep - 1e-4) && (mod(currentStep, plotDStep) > 1e-4) ||...
+                (currentStep < plotT0 || currentStep > plotTf) 
+                delete(h1);
+                delete(h2);
+                delete(h3);
         end
+%         for i = 1:pr.m
+%             delete(hxy{i});
+%             delete(ht{i});
+%         end
     end
-    h1  = plot(p_hat(1), p_hat(2), 'r.', 'MarkerSize', 15);
-    h2  = plot(SetSLAM.P{1});
-    for i = 1:pr.m
-        hxy{i}  = plot(SetSLAM.Lxy{i});
-        t1      = SetSLAM.Lt{i}.inf;
-        t2      = SetSLAM.Lt{i}.sup;
-        r       = 0.25*pr.Measurable_R; % line length to visualize the heading uncertainty
-        x       = [pr.l_hat(1,i)+r*cos(t1), pr.l_hat(1,i), pr.l_hat(1,i)+r*cos(t2)];
-        y       = [pr.l_hat(2,i)+r*sin(t1), pr.l_hat(2,i), pr.l_hat(2,i)+r*sin(t2)];
-        ht{i}   = plot(x, y, 'b');
-    end
-    %check_feasibility(p_hat, p_prev, distance, pr, Ma, Mr)
+    h1      = plot(p_hat(1), p_hat(2), 'r.', 'MarkerSize', 15);
+    overP   = plus(SetSLAM.P{1}, unitP);
+    h2      = plot(overP, [1,2], 'LineWidth', 2, 'Color', 'cyan');
+    h3      = circles(p_hat(1), p_hat(2), 0.12,  'LineWidth', 2, 'EdgeColor', 'k', 'FaceColor', 'k', 'FaceAlpha', 0.3);
+%     for i = 1:pr.m
+%         hxy{i}  = plot(SetSLAM.Lxy{i});
+%         t1      = SetSLAM.Lt{i}.inf;
+%         t2      = SetSLAM.Lt{i}.sup;
+%         r       = 0.25*pr.Measurable_R; % line length to visualize the heading uncertainty
+%         x       = [pr.l_hat(1,i)+r*cos(t1), pr.l_hat(1,i), pr.l_hat(1,i)+r*cos(t2)];
+%         y       = [pr.l_hat(2,i)+r*sin(t1), pr.l_hat(2,i), pr.l_hat(2,i)+r*sin(t2)];
+%         ht{i}   = plot(x, y, 'b');
+%     end
+    set(gca,'FontSize', 25); % change ticks label font size
+    axis equal; grid on; xlim([-1,1]); ylim([-2,0]);
+    % check_feasibility(p_hat, p_prev, distance, pr, Ma, Mr)
     if in(SetSLAM.P{1}, p_hat) == 0
         error('nominal state outside the set');
     end
+    currentStep     = currentStep + 1;
+    if currentStep > plotTf
+        break
+    end
     pause(0.01)
 end
+legend([h1, hlt, h2, h3],{'states $\hat{l}_{xy}$, $\hat{p}_{xy}$ ', 'camera heading $\hat{l}_{\theta}$ ',...
+    'estimated robot $P_{xy}$ ', 'robot body '}, 'Interpreter', 'latex', 'FontSize', 30, 'NumColumns', 2, 'Location', 'southoutside');
 fclose(fid);
 
 %% Sub function used to pre-process incoming data
