@@ -4,16 +4,19 @@ Set theoretical localization and mapping: This project aims to robustly localize
 ## Demonstration in Simulation
 
 1. Parking space installed with monocular cameras
+
 https://user-images.githubusercontent.com/58400416/132111298-997d92d8-4976-430f-84e6-de40c355b503.mp4
 
 
 
 2. Parking space installed with stereo cameras
+
 https://user-images.githubusercontent.com/58400416/132111295-971f1e66-7ea4-41bc-b835-a6135dfe4d66.mp4
 
 
 
 ## Real-world lidar localization
+
 https://user-images.githubusercontent.com/58400416/132111282-854d80d5-06c2-4931-9927-d296b449e436.mp4
 
 
