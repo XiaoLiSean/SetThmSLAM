@@ -93,7 +93,7 @@ while true
 %         ht{i}   = plot(x, y, 'b');
 %     end
     set(gca,'FontSize', 25, 'FontName', 'times'); % change ticks label font size
-    axis equal; grid on; xlim([-0.6,0.5]); ylim([-1.7,-0.8]);
+    axis equal; grid on; xlim([-0.75,1]); ylim([-1.25,0.25]);
     % check_feasibility(p_hat, p_prev, distance, pr, Ma, Mr)
     if in(SetSLAM.P{1}, p_hat) == 0
         error('nominal state outside the set');
@@ -102,7 +102,7 @@ while true
     if currentStep > plotTf
         break
     end
-    pause(dt)
+    pause(0.01)
 end
 legend([h1, hlt, h2, h3],{'states $\hat{l}_{xy}$, $\hat{p}_{xy}$ ', 'camera heading $\hat{l}_{\theta}$ ',...
         'estimated robot $P_{xy}$ ', 'robot body '}, 'Interpreter', 'latex', 'FontSize', 30, 'NumColumns', 2, 'Location', 'southoutside');

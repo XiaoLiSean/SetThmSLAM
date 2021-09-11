@@ -24,7 +24,7 @@ classdef params
         epsilon_P   = 1; % in meter
         dVFractionThreshold     = 0.01; % used to determine the termination of set update
         ring_sector_num         = 8; % sector the constraint ring to parts as convex polygons
-        safetyIndex             = 1.2; % ensure safe propagation given the maxSpeed can be wrong
+        safetyIndex             = 1.0; % ensure safe propagation given the maxSpeed can be wrong
     end
     methods
         function obj = params()
