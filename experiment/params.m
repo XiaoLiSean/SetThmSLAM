@@ -54,7 +54,7 @@ classdef params
             
             % Later these data should be initialized differently from the 
             % raw/calibrated data given new lidar layout
-            obj.Omega_L     = interval([-1; -2], [1; 0]);
+            obj.Omega_L     = interval([-1; -1.5], [1; 0.5]);
             obj.Omega_P     = obj.Omega_L;
             for i = 1:obj.n
                 obj.P{i}        = obj.Omega_P;

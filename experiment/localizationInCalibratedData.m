@@ -22,6 +22,7 @@ for i = 1:pr.m
     hlt     = plot([pr.l_hat(1,i), pr.l_hat(1,i)+0.25*Measurable_R*cos(pr.l_hat(3,i))],...
                 [pr.l_hat(2,i), pr.l_hat(2,i)+0.25*Measurable_R*sin(pr.l_hat(3,i))], 'r--', 'LineWidth', 2);
 end
+pause(5)
 %% Simulation main
 currentStep = 0;
 plotT0      = inf;
@@ -29,6 +30,7 @@ plotTf      = inf;
 plotDStep   = 25;
 trajectory  = [];
 unitP       = decomposeCirc2ConvPolygons([0,0], 0.12, 12);
+tic
 while true
     % read single data at a certain timestamp from recorded scream
     newline     = fgetl(fid);
@@ -53,7 +55,6 @@ while true
     t_prev  = str2double(data{1});
     p_hat   = [str2double(data{2}); str2double(data{3})];
     % SetSLAM localization
-    tic
     distance    = dt*pr.maxSpeed;
 	SetSLAM.propagateSetsWithDistance(distance);
     [Mas, Mrs, A_hats, Ma, Mr]  = formulateMeasurements(data, pr.m);
@@ -61,7 +62,6 @@ while true
         SetSLAM.getMeasureAndMatching(Mas{i}, Mrs{i}, A_hats{i});
         SetSLAM.updateSets();
     end
-    toc
     % visualization
     if currentStep > plotT0 && currentStep < plotTf
         trajectory  = [trajectory; p_hat(1), p_hat(2)];
@@ -83,17 +83,8 @@ while true
     overP   = plus(SetSLAM.P{1}, unitP);
     h2      = plot(overP, [1,2], 'LineWidth', 2, 'Color', 'cyan');
     h3      = circles(p_hat(1), p_hat(2), 0.12,  'LineWidth', 2, 'EdgeColor', 'k', 'FaceColor', 'k', 'FaceAlpha', 0.3);
-%     for i = 1:pr.m
-%         hxy{i}  = plot(SetSLAM.Lxy{i});
-%         t1      = SetSLAM.Lt{i}.inf;
-%         t2      = SetSLAM.Lt{i}.sup;
-%         r       = 0.25*pr.Measurable_R; % line length to visualize the heading uncertainty
-%         x       = [pr.l_hat(1,i)+r*cos(t1), pr.l_hat(1,i), pr.l_hat(1,i)+r*cos(t2)];
-%         y       = [pr.l_hat(2,i)+r*sin(t1), pr.l_hat(2,i), pr.l_hat(2,i)+r*sin(t2)];
-%         ht{i}   = plot(x, y, 'b');
-%     end
     set(gca,'FontSize', 25, 'FontName', 'times'); % change ticks label font size
-    axis equal; grid on; xlim([-0.75,1]); ylim([-1.25,0.25]);
+    axis equal; grid on; xlim([-1,1]); ylim([-1.5,0.5]);
     % check_feasibility(p_hat, p_prev, distance, pr, Ma, Mr)
     if in(SetSLAM.P{1}, p_hat) == 0
         error('nominal state outside the set');
@@ -102,12 +93,12 @@ while true
     if currentStep > plotTf
         break
     end
-    pause(0.01)
+    pause(0.012)
 end
-legend([h1, hlt, h2, h3],{'states $\hat{l}_{xy}$, $\hat{p}_{xy}$ ', 'camera heading $\hat{l}_{\theta}$ ',...
-        'estimated robot $P_{xy}$ ', 'robot body '}, 'Interpreter', 'latex', 'FontSize', 30, 'NumColumns', 2, 'Location', 'southoutside');
+%legend([h1, hlt, h2, h3],{'states $\hat{l}_{xy}$, $\hat{p}_{xy}$ ', 'camera heading $\hat{l}_{\theta}$ ',...
+%        'estimated robot $P_{xy}$ ', 'robot body '}, 'Interpreter', 'latex', 'FontSize', 30, 'NumColumns', 2, 'Location', 'southoutside');
 fclose(fid);
-
+toc
 %% Sub function used to pre-process incoming data
 function [Mas, Mrs, A_hats, Ma, Mr] = formulateMeasurements(data, m)
     lidar_i     = 0;
