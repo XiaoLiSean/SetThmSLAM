@@ -1,10 +1,10 @@
-clear all; clc;
+%clear all; clc;
 close all;
 addpath('..')
 addpath('../util')
 addpath('../set operation')
 addpath('../filtering')
-Historys  	= load('snapshot_stereo_eva_0.087266_evr_0.1_ew_0.075_Lt0_0.087266_Lxy0_0.1_P0_0.5.mat').Historys;
+%Historys  	= load('snapshot_stereo_eva_0.087266_evr_0.1_ew_0.075_Lt0_0.087266_Lxy0_0.1_P0_0.5.mat').Historys;
 
 figure(1)
 pr      = params;
@@ -18,10 +18,10 @@ function showMap(pr, costmap)
     plot(costmap, 'Inflation', 'off'); hold on;
     xlim([pr.Omega_L.inf(1) pr.Omega_L.sup(1)]);
     ylim([pr.Omega_L.inf(2) pr.Omega_L.sup(2)]);
-    for i = 1:pr.m
+    for i = 1:length(pr.l_hat)
         h1  = plot(pr.l_hat(1,i), pr.l_hat(2,i), 'r.', 'MarkerSize', 20, 'LineWidth', 2); hold on;
         offset  = (-1)^(pr.l_hat(2,i) < pr.SpaceDim(2))*2;
-        text(pr.l_hat(1,i), pr.l_hat(2,i)+offset, num2str(i), 'Color', 'Red', 'FontSize', 25)
+        text(pr.l_hat(1,i), pr.l_hat(2,i)+offset, num2str(i), 'Color', 'Red', 'FontSize', 25, 'FontName','times')
         h2  = plot([pr.l_hat(1,i), pr.l_hat(1,i)+0.25*pr.Measurable_R*cos(pr.l_hat(3,i))],...
              [pr.l_hat(2,i), pr.l_hat(2,i)+0.25*pr.Measurable_R*sin(pr.l_hat(3,i))], 'r--', 'LineWidth', 2);
         if i == 1
@@ -37,7 +37,7 @@ end
 
 % Draw trajectory and snapshots
 function showSnapshots(Historys)
-    set(gca,'FontSize', 25);
+    set(gca,'FontSize', 25, 'FontName','times');
     trajectory      = zeros(length(Historys), 2);
     for i = 1:length(Historys)
         state               = Historys{i}.p_car;

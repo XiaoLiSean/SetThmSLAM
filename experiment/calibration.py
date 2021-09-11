@@ -10,7 +10,7 @@ to the PC can activate ttyUSB1 and ttyUSB2'''
 from sensors.lidar import RPLidarA1
 from sensors.optitrack import OptiTrack
 from scipy.optimize import curve_fit
-from params import LIDAR_PORTs, CarToLidarFoVs, DistanceThreshold
+from params import LIDAR_PORTs, CarToLidarFoVs, DistanceThreshold, HardErrBound
 import matplotlib.pyplot as plt
 import numpy as np
 import copy, time, csv
@@ -135,9 +135,15 @@ def obtainMaximumBound(dataSynchronized, dx, dy, theta):
         range_gt = np.sqrt((y_gt-dy)**2+(x_gt-dx)**2)
         range_error = abs(range_gt-range_z)
         bearing_error = min(np.mod(bearing_gt-bearing_z, 2*np.pi), abs(bearing_gt-bearing_z), np.mod(abs(bearing_gt-bearing_z), 2*np.pi))
-        if bearing_error > e_a:
+        # if bearing_error > np.deg2rad(26):
+        #     print(z, idx)
+        #     print(dx, dy, theta)
+        #     print(np.rad2deg(bearing_gt), np.rad2deg(bearing_z))
+        #     print(np.rad2deg(bearing_error))
+        #     exit()
+        if bearing_error > e_a and bearing_error < np.deg2rad(HardErrBound[1]):
             e_a = bearing_error
-        if range_error > e_r:
+        if range_error > e_r and range_error < HardErrBound[0]:
             e_r = range_error
         if idx > 0:
             x_gt_prev = dataSynchronized[idx-1][1]
@@ -154,7 +160,6 @@ def obtainMaximumBound(dataSynchronized, dx, dy, theta):
             if speed > v_max:
                 v_max = speed
     return e_a, e_r, v_max
-
 # ------------------------------------------------------------------------------
 def updateCalibratedPlot(data, lidar_i, calibrationParams, ax):
     groundTrue = data['gt']
@@ -198,15 +203,40 @@ def saveDataAndCalibrationParam(dataSynchronized, calibrationParams):
     calibrationParams = np.array(calibrationParams).reshape((len(LIDAR_PORTs),6))
     np.savetxt('calibrationData/calibrationParams.txt', calibrationParams, delimiter=',')
 # ------------------------------------------------------------------------------
+def solveAndFilter(num_lidar, labelDistanceThreshold, DistanceThreshold, dataCalibration):
+    distanceErrs = [[] for i in range(num_lidar)]
+    for lidar_i in range(num_lidar):
+        dx, dy, theta = solveLidarPose(dataCalibration[lidar_i])
+        tmp_dataCalibration = copy.deepcopy(dataCalibration[lidar_i])
+        for z in tmp_dataCalibration:
+            pos_opti = np.array([z[1], z[2]]).reshape((2,1))
+            pos_lidar = np.array([z[3]*np.cos(theta)-z[4]*np.sin(theta)+dx, z[3]*np.sin(theta)+z[4]*np.cos(theta)+dy]).reshape((2,1))
+            l2error = np.linalg.norm(pos_opti-pos_lidar, ord=2)
+            if labelDistanceThreshold:
+                distanceErrs[lidar_i].append(l2error)
+            else:
+                if l2error < DistanceThreshold[lidar_i][0] or l2error > DistanceThreshold[lidar_i][1]:
+                    dataCalibration[lidar_i].remove(z)
+
+    return dataCalibration, distanceErrs
+# ------------------------------------------------------------------------------
+def showL2Hist(num_lidar, distanceErrs):
+    fig, axs = plt.subplots(num_lidar)
+    for i in range(num_lidar):
+        axs[i].hist(np.array(distanceErrs[i]), bins=200)
+        axs[i].set_xticks(np.arange(min(distanceErrs[i]),max(distanceErrs[i]), 0.01))
+        axs[i].set_xticklabels(np.round(np.arange(min(distanceErrs[i]),max(distanceErrs[i]),0.01), 2), rotation=90, fontsize=5)
+    plt.show()
+# ------------------------------------------------------------------------------
 def calibration(filename, labelDistanceThreshold=True):
     recording = np.load(filename, allow_pickle=True)
     num_lidar = len(recording[0]['z'])
     dataCalibration = [[] for i in range(num_lidar)] # each row is a indivisual recording [timestamp-t0, gt_x, gt_y, x_measure, y_measure, bearing, range]
     calibrationParams = []
-    distanceErrs = [[] for i in range(num_lidar)]
+    angleErrs = [[] for i in range(num_lidar)]
     # --------------------------------------------------------------------------
+    # Prepare data for calibration calculation
     for lidar_i in range(num_lidar):
-        # Prepare data for calibration calculation
         for data in recording:
             groundTrue = data['gt']
             markerMeasure = filterMeasurement(data['z'][lidar_i], CarToLidarFoVs[lidar_i])
@@ -222,24 +252,17 @@ def calibration(filename, labelDistanceThreshold=True):
                 else:
                     t0 = dataCalibration[lidar_i][0][0]
                 dataCalibration[lidar_i].append([data['t']-t0, groundTrue[0], groundTrue[1], MarkerXs[i], MarkerYs[i], np.deg2rad(markerMeasure['a'])[i], markerMeasure['r'][i]/1000])
-        # ----------------------------------------------------------------------
-        # solve lidar pose use un-filtered dataSynchronized
-        dx, dy, theta = solveLidarPose(dataCalibration[lidar_i])
-        tmp_dataCalibration = copy.deepcopy(dataCalibration[lidar_i])
-        for z in tmp_dataCalibration:
-            pos_opti = np.array([z[1], z[2]]).reshape((2,1))
-            pos_lidar = np.array([z[3]*np.cos(theta)-z[4]*np.sin(theta)+dx, z[3]*np.sin(theta)+z[4]*np.cos(theta)+dy]).reshape((2,1))
-            l2error = np.linalg.norm(pos_opti-pos_lidar, ord=2)
-            if labelDistanceThreshold:
-                distanceErrs[lidar_i].append(l2error)
-            else:
-                if l2error < DistanceThreshold[lidar_i][0] or l2error > DistanceThreshold[lidar_i][1]:
-                    dataCalibration[lidar_i].remove(z)
-        # ----------------------------------------------------------------------
-        # resolve lidar pose use filtered dataSynchronized
+    # ----------------------------------------------------------------------
+    # solve lidar pose use un-filtered dataSynchronized and filter the unwanted data
+    dataCalibration, distanceErrs = solveAndFilter(num_lidar, labelDistanceThreshold, DistanceThreshold, copy.deepcopy(dataCalibration))
+    if labelDistanceThreshold:
+        showL2Hist(num_lidar, distanceErrs)
+    # ----------------------------------------------------------------------
+    # resolve lidar pose use filtered dataSynchronized
+    for lidar_i in range(num_lidar):
         dx, dy, theta = solveLidarPose(dataCalibration[lidar_i])
         e_a, e_r, v_max = obtainMaximumBound(dataCalibration[lidar_i], dx, dy, theta)
-        calibrationParams.append([dx.item(0), dy.item(0), theta.item(0), e_a.item(0), e_r.item(0), v_max])
+        calibrationParams.append([dx.item(0), dy.item(0), theta.item(0), e_a.item(0), e_r, v_max])
         if not labelDistanceThreshold:
             print('-----'*20)
             print("Calibration result: [dx, dy, theta] = ({}[m],{}[m],{}[deg])".format(dx, dy, np.rad2deg(theta)))
@@ -248,14 +271,6 @@ def calibration(filename, labelDistanceThreshold=True):
     # --------------------------------------------------------------------------
     # Loop through data for visual check
     dataSynchronized = []
-    if labelDistanceThreshold:
-        fig, axs = plt.subplots(num_lidar)
-        for i in range(num_lidar):
-            axs[i].hist(np.array(distanceErrs[i]), bins=len(distanceErrs[i]))
-            axs[i].set_xticks(np.arange(0,1,0.02))
-            axs[i].set_xticklabels(np.round(np.arange(0,1,0.02), 2))
-        plt.show()
-
     fig, axs = plt.subplots(ncols=num_lidar)
     for data in recording:
         singleData = [data['t'], data['gt'][0], data['gt'][1]] # append timestamp
@@ -266,7 +281,6 @@ def calibration(filename, labelDistanceThreshold=True):
         plt.pause(0.01)
     plt.show()
     saveDataAndCalibrationParam(dataSynchronized, calibrationParams)
-
 # ==============================================================================
 if __name__ == '__main__':
     filename = 'calibrationData/calibrateRaw.npy'

@@ -54,10 +54,7 @@ classdef params < matlab.mixin.Copyable
         epsilon_rb  = 0.00; % rigid body uncertainty in [meter]
         dVFractionThreshold     = 0.01; % used to determine the termination of set update
         ring_sector_num         = 8; % sector the constraint ring to parts as convex polygons
-        
-        %% Variables for setting up particle filter
-        particle_num    = 100; % number of particles
-        
+               
     end
     
     %% Uncertainty set Properties
@@ -77,6 +74,7 @@ classdef params < matlab.mixin.Copyable
         MinTurningRadius; % in meters
         p_hat_rel; % initial markers' position in ego car's frame: p_hat_rel(:,i) = [x;y]
         routePlan; % waypoints of trajectory
+        particle_num; % number of particles
     end
     methods
         function obj = params()
@@ -129,6 +127,10 @@ classdef params < matlab.mixin.Copyable
             RightTop    = [max([max(obj.l_hat(1,:)) + obj.epsilon_Lxy, obj.SpaceDim(1)]); max([max(obj.l_hat(2,:)) + obj.epsilon_Lxy, obj.SpaceDim(2)])];
             obj.Omega_L = interval(LeftBottom, RightTop); 
             obj.Omega_P = interval([0; 0], obj.SpaceDim);
+            % =============================================================
+            % Variables for setting up particle filter
+            % =============================================================
+            obj.particle_num    = 100;
         end
         
         function resetParams(obj, e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P)
@@ -160,6 +162,10 @@ classdef params < matlab.mixin.Copyable
             obj.Omega_L = interval(LeftBottom, RightTop); 
             obj.Omega_P = interval([0; 0], obj.SpaceDim);
             end
+        end
+        
+        function setParticleNum(obj, particle_num)
+            obj.particle_num    = particle_num;
         end
     end
 end

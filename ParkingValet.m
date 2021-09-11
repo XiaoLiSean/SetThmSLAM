@@ -57,6 +57,7 @@ classdef ParkingValet < matlab.mixin.Copyable
         
         %% Write Plot and Path History to File
         History;
+        saveHistory;
         saveHistoryConcise;
         isSetSLAMGuaranteed;
         isFastSLAMGuaranteed;
@@ -64,7 +65,8 @@ classdef ParkingValet < matlab.mixin.Copyable
     methods
         %% Initialization
         function obj = ParkingValet(parameters, cameraType, enableCamUpdate, enableFastSLAM, enableSetSLAM,...
-                                        enableRigidBodyConstraints, isReconstruction, enableCtrlSignal, saveHistoryConcise)
+                                        enableRigidBodyConstraints, isReconstruction, enableCtrlSignal,...
+                                        saveHistory, saveHistoryConcise)
             addpath('./util')
             addpath('./set operation')
             addpath('./filtering')
@@ -86,6 +88,7 @@ classdef ParkingValet < matlab.mixin.Copyable
             obj.lonController       = HelperLongitudinalController('SampleTime', obj.pr.sampleTime);
             % -------------------------------------------------------------
             obj.History             = {};
+            obj.saveHistory         = saveHistory;
             obj.saveHistoryConcise  = saveHistoryConcise;
             if strcmp(cameraType,'stereo')
                 obj.isStereoVision  = true;
@@ -278,10 +281,12 @@ classdef ParkingValet < matlab.mixin.Copyable
                 obj.check_guaranteed_property()
                 % =====================================================
                 % Check if the sub-goal is reached and save history
-                if obj.saveHistoryConcise
-                    obj.updateHistoryConcise(time_step);
-                else
-                    obj.updateHistory(time_step);
+                if obj.saveHistory
+                    if obj.saveHistoryConcise
+                        obj.updateHistoryConcise(time_step);
+                    else
+                        obj.updateHistory(time_step);
+                    end
                 end
                 current_time    = current_time + obj.pr.simLoopDt;
                 time_step       = time_step + 1;
@@ -591,17 +596,21 @@ classdef ParkingValet < matlab.mixin.Copyable
             template.p_car  = obj.p_car;
             template.pxy    = obj.pxy;
             template.pt     = obj.pt;
-            template.SetSLAM.Lxy    = obj.SetSLAM.Lxy;
-            template.SetSLAM.Lt     = obj.SetSLAM.Lt;
-            template.SetSLAM.P      = obj.SetSLAM.P;
-            template.SetSLAM.Pxy    = obj.SetSLAM.Pxy;
-            template.SetSLAM.Pt     = obj.SetSLAM.Pt;
-            template.SetSLAM.isIn   = obj.isSetSLAMGuaranteed;
-            template.FastSLAM.mu    = obj.FastSLAM.mu;
-            template.FastSLAM.Sigma = obj.FastSLAM.Sigma;
-            template.FastSLAM.Pxy   = obj.FastSLAM.Pxy;
-            template.FastSLAM.Pt    = obj.FastSLAM.Pt;
-            template.FastSLAM.isIn  = obj.isFastSLAMGuaranteed;
+            if obj.enableSetSLAM
+                template.SetSLAM.Lxy    = obj.SetSLAM.Lxy;
+                template.SetSLAM.Lt     = obj.SetSLAM.Lt;
+                template.SetSLAM.P      = obj.SetSLAM.P;
+                template.SetSLAM.Pxy    = obj.SetSLAM.Pxy;
+                template.SetSLAM.Pt     = obj.SetSLAM.Pt;
+            end
+            if obj.enableFastSLAM
+                template.SetSLAM.isIn   = obj.isSetSLAMGuaranteed;
+                template.FastSLAM.mu    = obj.FastSLAM.mu;
+                template.FastSLAM.Sigma = obj.FastSLAM.Sigma;
+                template.FastSLAM.Pxy   = obj.FastSLAM.Pxy;
+                template.FastSLAM.Pt    = obj.FastSLAM.Pt;
+                template.FastSLAM.isIn  = obj.isFastSLAMGuaranteed;
+            end
             obj.History{time_step}  = template;
         end
         
@@ -610,12 +619,16 @@ classdef ParkingValet < matlab.mixin.Copyable
             if time_step == 1
                 template.pr         = copy(obj.pr);
             end
-            template.SetSLAM.Pxy    = volume(obj.SetSLAM.Pxy);
-            template.SetSLAM.Pt     = volume(obj.SetSLAM.Pt);
-            template.SetSLAM.isIn   = obj.isSetSLAMGuaranteed;
-            template.FastSLAM.Pxy   = volume(obj.FastSLAM.Pxy);
-            template.FastSLAM.Pt    = volume(obj.FastSLAM.Pt);
-            template.FastSLAM.isIn  = obj.isFastSLAMGuaranteed;
+            if obj.enableSetSLAM
+                template.SetSLAM.Pxy    = volume(obj.SetSLAM.Pxy);
+                template.SetSLAM.Pt     = volume(obj.SetSLAM.Pt);
+                template.SetSLAM.isIn   = obj.isSetSLAMGuaranteed;
+            end
+            if obj.enableFastSLAM
+                template.FastSLAM.Pxy   = volume(obj.FastSLAM.Pxy);
+                template.FastSLAM.Pt    = volume(obj.FastSLAM.Pt);
+                template.FastSLAM.isIn  = obj.isFastSLAMGuaranteed;
+            end
             obj.History{time_step}  = template;
         end
     end

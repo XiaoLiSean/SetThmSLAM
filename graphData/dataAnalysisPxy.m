@@ -27,21 +27,27 @@ labels          = ["$\epsilon^{v_a}$ [deg]", "$\epsilon^{v_r}$ [m]",...
                     "$V(P_{i}(k=0))$ [$m^2$]",...
                     "$V(L_{i,\theta}(k=0))$ [deg]",...
                     "$V(L_{i,xy}(k=0))$ [$m^2$]"];
-                
-%% Simulation Main
+fontSize        = 20; 
+alpha1          = 0.25;
+alpha2          = 0.12;
+
+%% Simulation with Changing noise
 fig     = figure(1);
 set(gcf,'color','w');
+set(gcf,'Position',[0 0 1000 400])
 for i_cam = 1:length(cameraTypes)
     camType         = cameraTypes(i_cam);
-    for k = 1:length(e_mesh)
+    for k = 1:2
         pr      = {e_vas(1), e_vrs(1), epsilon_Ps(1), epsilon_Lts(1), epsilon_Lxys(1)};
         x       = e_mesh{k};
         yFast   = zeros(num, timeSteps-initialDT);
         ySet   = zeros(num, timeSteps-initialDT);
-        if k == 2 && strcmp(camType,'mono') 
+        if k == 2 && strcmp(camType,'mono')
+            leg = legend([h1S, h2S, h3S, h1F, h2F, h3F],{'mean (Ours)', 'std (Ours)', 'Max/Min (Ours)', 'mean (FastSLAM)', 'std (FastSLAM)', 'Max/Min (FastSLAM)'},...
+                'Interpreter','latex', 'NumColumns', 2, 'FontSize', fontSize*0.7, 'Position', [0.1, 0.2, 0.4,0.2]);
             continue
         end
-        subax   = subplot(length(e_mesh), 2, 2*(k-1)+i_cam);
+        subplot(2, 2, 2*(k-1)+i_cam);
         for i = 1:num
             pr{k}   = e_mesh{k}(i);
             [e_va, e_vr, epsilon_P, epsilon_Lt, epsilon_Lxy]    = deal(pr{:});
@@ -55,44 +61,108 @@ for i_cam = 1:length(cameraTypes)
             ySet(i,:)   = History.SetSLAM.Pxy/vehicleVolume;
             yFast(i,:)  = History.FastSLAM.Pxy/vehicleVolume;
         end
-        cSet    = (max(ySet, [], 2) + min(ySet, [], 2))/2;
-        cFast   = (max(yFast, [], 2) + min(yFast, [], 2))/2;
-        rSet    = (max(ySet, [], 2) - min(ySet, [], 2))/2;
-        rFast   = (max(yFast, [], 2) - min(yFast, [], 2))/2; 
-        plot(x, cSet, 'r', 'LineWidth', 1); hold on;
-        plot(x, cFast, 'b', 'LineWidth', 1);
+        mSet    = mean(ySet, 2);
+        mFast   = mean(yFast, 2);
+        sSet    = std(ySet, 0, 2);
+        sFast   = std(yFast, 0, 2);
+        h1S     = plot(x, mSet, 'r', 'LineWidth', 1); hold on;
+        h1F     = plot(x, mFast, 'b', 'LineWidth', 1);
         % draw shaded area
         patchX  = [x,flip(x)];
-        setPy   = [cSet-rSet; flip(cSet+rSet)]';       
-        FastPy  = [cFast-rFast; flip(cFast+rFast)]';
-        patch(patchX, setPy, 'red', 'EdgeColor','red', 'FaceAlpha',.2, 'EdgeAlpha',.4); 
-        patch(patchX, FastPy, 'blue', 'EdgeColor','blue', 'FaceAlpha',.2, 'EdgeAlpha',.4);
+        setPy   = [mSet-sSet; flip(mSet+sSet)]';       
+        FastPy  = [mFast-sFast; flip(mFast+sFast)]';
+        h2S     = patch(patchX, setPy, 'red', 'EdgeColor','red', 'FaceAlpha',alpha1, 'EdgeAlpha',alpha1); 
+        h2F     = patch(patchX, FastPy, 'blue', 'EdgeColor','blue', 'FaceAlpha',alpha1, 'EdgeAlpha',alpha1);
+        h3S     = patch(patchX, [min(ySet,[],2); flip(max(ySet,[],2))]', 'red', 'EdgeColor','red', 'FaceAlpha',alpha2, 'EdgeAlpha',alpha2); 
+        h3F     = patch(patchX, [min(yFast,[],2); flip(max(yFast,[],2))]', 'blue', 'EdgeColor','blue', 'FaceAlpha',alpha2, 'EdgeAlpha',alpha2);
         % Set axis limits and labels
         xlim([min(x), max(x)]); ylim([min([ySet, yFast], [], 'all'), max([ySet, yFast], [], 'all')]);
-        set(gca,'FontSize', 15); % change ticks label font size
-        xlabel(labels(k), 'Interpreter', 'latex', 'FontSize', 25); 
-        yline(1, 'r--', 'LineWidth', 2);
+        set(gca,'FontSize', fontSize, 'FontName','times'); % change ticks label font size
+        xlabel(labels(k), 'Interpreter', 'latex', 'FontSize', fontSize); 
         xticks(linspace(e_mesh{k}(1), e_mesh{k}(end), 6));
-        xticklabels(string(round(linspace(yTickLabels{k}(1), yTickLabels{k}(end), 6)*100)/100));
+        xticklabels(string(round(linspace(yTickLabels{k}(1), yTickLabels{k}(end), 6)*1)/1));
+    end
+end
+ax  = axes(fig,'visible','off');
+ax.YLabel.Visible   ='on';
+ylabel(ax, {'$V(P_{xy})/(c_w\cdot c_l)$ [$m^2$]', ''}, 'Interpreter','latex', 'FontSize', fontSize);
+currentFigure   = gcf;
+title(currentFigure.Children(end), 'Monocular Camera', 'Interpreter', 'latex', 'FontSize', fontSize);
+title(currentFigure.Children(3), 'Stereo Camera', 'Interpreter', 'latex', 'FontSize', fontSize);
+saveas(gcf,'pxyVersusParamsA','epsc')
+
+%% Simulation with Changing initialization
+fig     = figure(2);
+set(gcf,'color','w');
+set(gcf,'Position',[0 0 1000 800])
+for i_cam = 1:length(cameraTypes)
+    camType         = cameraTypes(i_cam);
+    for k = 3:length(e_mesh)
+        pr      = {e_vas(1), e_vrs(1), epsilon_Ps(1), epsilon_Lts(1), epsilon_Lxys(1)};
+        x       = e_mesh{k};
+        yFast   = zeros(num, timeSteps-initialDT);
+        ySet   = zeros(num, timeSteps-initialDT);
+        if k == 2 && strcmp(camType,'mono') 
+            continue
+        end
+        subplot(4, 2, 2*(k-2)+i_cam);
+        for i = 1:num
+            pr{k}   = e_mesh{k}(i);
+            [e_va, e_vr, epsilon_P, epsilon_Lt, epsilon_Lxy]    = deal(pr{:});
+            if strcmp(camType,'mono')
+                filename =  getFileName(camType, 0.075, e_va, 0.01, epsilon_Lt, epsilon_Lxy, epsilon_P);
+            else
+                filename =  getFileName(camType, 0.075, e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P);
+            end
+            data    = load(filename).Historys;
+            History = cellHistory2Arr(data, initialDT);
+            ySet(i,:)   = History.SetSLAM.Pxy/vehicleVolume;
+            yFast(i,:)  = History.FastSLAM.Pxy/vehicleVolume;
+        end
+        mSet    = mean(ySet, 2);
+        mFast   = mean(yFast, 2);
+        sSet    = std(ySet, 0, 2);
+        sFast   = std(yFast, 0, 2);
+        plot(x, mSet, 'r', 'LineWidth', 1); hold on;
+        plot(x, mFast, 'b', 'LineWidth', 1);
+        % draw shaded area
+        patchX  = [x,flip(x)];
+        setPy   = [mSet-sSet; flip(mSet+sSet)]';       
+        FastPy  = [mFast-sFast; flip(mFast+sFast)]';
+        patch(patchX, setPy, 'red', 'EdgeColor','red', 'FaceAlpha',alpha1, 'EdgeAlpha',alpha1); 
+        patch(patchX, FastPy, 'blue', 'EdgeColor','blue', 'FaceAlpha',alpha1, 'EdgeAlpha',alpha1);
+        patch(patchX, [min(ySet,[],2); flip(max(ySet,[],2))]', 'red', 'EdgeColor','red', 'FaceAlpha',alpha2, 'EdgeAlpha',alpha2); 
+        patch(patchX, [min(yFast,[],2); flip(max(yFast,[],2))]', 'blue', 'EdgeColor','blue', 'FaceAlpha',alpha2, 'EdgeAlpha',alpha2);
+        % Set axis limits and labels
+        xlim([min(x), max(x)]); ylim([min([ySet, yFast], [], 'all'), max([ySet, yFast], [], 'all')]);
+        set(gca,'FontSize', fontSize, 'FontName','times'); % change ticks label font size
+        xlabel(labels(k), 'Interpreter', 'latex', 'FontSize', fontSize); 
+        xticks(linspace(e_mesh{k}(1), e_mesh{k}(end), 6));
+        xticklabels(string(round(linspace(yTickLabels{k}(1), yTickLabels{k}(end), 6)*1)/1));
         if k == 3
-            figure(2);
-            set(gcf,'color','w');
-            subplot(2,1,i_cam);
-            plot(x, cSet, 'r', 'LineWidth', 1); hold on;
-            patch(patchX, setPy, 'red', 'EdgeColor','red', 'FaceAlpha',.2, 'EdgeAlpha',.4); 
+            subplot(4, 2, i_cam);
+            plot(x, mSet, 'r', 'LineWidth', 1); hold on;
+            patch(patchX, setPy, 'red', 'EdgeColor','red', 'FaceAlpha',alpha1, 'EdgeAlpha',alpha1);            
+            patch(patchX, [min(ySet,[],2); flip(max(ySet,[],2))]', 'red', 'EdgeColor','red', 'FaceAlpha',alpha2, 'EdgeAlpha',alpha2); 
             xticks(linspace(e_mesh{k}(1), e_mesh{k}(end), 6));
-            xticklabels(string(round(linspace(yTickLabels{k}(1), yTickLabels{k}(end), 6)*100)/100));
-            set(gca,'FontSize', 15);
-            figure(1);
+            xticklabels(string(round(linspace(yTickLabels{k}(1), yTickLabels{k}(end), 6)*1)/1));
+            xlim([min(x), max(x)]);
+            xlabel(labels(k), 'Interpreter', 'latex', 'FontSize', fontSize); 
+            set(gca,'FontSize', fontSize, 'FontName','times');
         end
     end
 end
 ax  = axes(fig,'visible','off');
 ax.YLabel.Visible   ='on';
-ylabel(ax, {'$V(P_{xy})/(c_w\cdot c_l)$ [$m^2$]', ''}, 'Interpreter','latex', 'FontSize', 25);
+ylabel(ax, {'$V(P_{xy})/(c_w\cdot c_l)$ [$m^2$]', ''}, 'Interpreter','latex', 'FontSize', fontSize);
 currentFigure   = gcf;
-title(currentFigure.Children(end), 'Monocular Camera', 'Interpreter', 'latex', 'FontSize', 25);
-title(currentFigure.Children(6), 'Stereo Camera', 'Interpreter', 'latex', 'FontSize', 25);
+title(currentFigure.Children(8), 'Monocular Camera', 'Interpreter', 'latex', 'FontSize', fontSize);
+title(currentFigure.Children(4), 'Stereo Camera', 'Interpreter', 'latex', 'FontSize', fontSize);
+annotation('rectangle',[0.12, 0.59, 0.35, 0.03],'Color','red')
+annotation('rectangle',[0.56, 0.59, 0.35, 0.03],'Color','red')
+annotation('arrow', [0.15,0.15],[0.62, 0.82],'Color','red')
+annotation('arrow', [0.6,0.6],[0.62, 0.82],'Color','red')
+saveas(gcf,'pxyVersusParamsB','epsc')
 
 %% Support functions
 function filename = getFileName(cameraType, e_w, e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P)

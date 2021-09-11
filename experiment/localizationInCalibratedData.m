@@ -8,6 +8,7 @@ addpath('../util')
 %% Main
 figure(1);
 set(gcf,'color','w');
+pause(5)
 pr          = params;
 SetSLAM     = SetThmSLAM(pr, true, false, false, false, []);
 fid         = fopen('calibrationData/calibratedData.txt','rt');
@@ -15,15 +16,16 @@ is_initial  = true;
 
 %% plot the field and lidars
 plot(pr.Omega_L); hold on;
+Measurable_R    = 1; 
 for i = 1:pr.m
     hlxy    = plot(pr.l_hat(1,i), pr.l_hat(2,i), 'r.', 'MarkerSize', 15, 'LineWidth', 2);
-    hlt     = plot([pr.l_hat(1,i), pr.l_hat(1,i)+0.25*pr.Measurable_R*cos(pr.l_hat(3,i))],...
-                [pr.l_hat(2,i), pr.l_hat(2,i)+0.25*pr.Measurable_R*sin(pr.l_hat(3,i))], 'r--', 'LineWidth', 2);
+    hlt     = plot([pr.l_hat(1,i), pr.l_hat(1,i)+0.25*Measurable_R*cos(pr.l_hat(3,i))],...
+                [pr.l_hat(2,i), pr.l_hat(2,i)+0.25*Measurable_R*sin(pr.l_hat(3,i))], 'r--', 'LineWidth', 2);
 end
 %% Simulation main
 currentStep = 0;
-plotT0      = 250;
-plotTf      = 350;
+plotT0      = inf;
+plotTf      = inf;
 plotDStep   = 25;
 trajectory  = [];
 unitP       = decomposeCirc2ConvPolygons([0,0], 0.12, 12);
@@ -90,8 +92,8 @@ while true
 %         y       = [pr.l_hat(2,i)+r*sin(t1), pr.l_hat(2,i), pr.l_hat(2,i)+r*sin(t2)];
 %         ht{i}   = plot(x, y, 'b');
 %     end
-    set(gca,'FontSize', 25); % change ticks label font size
-    axis equal; grid on; xlim([-1,1]); ylim([-2,0]);
+    set(gca,'FontSize', 25, 'FontName', 'times'); % change ticks label font size
+    axis equal; grid on; xlim([-0.6,0.5]); ylim([-1.7,-0.8]);
     % check_feasibility(p_hat, p_prev, distance, pr, Ma, Mr)
     if in(SetSLAM.P{1}, p_hat) == 0
         error('nominal state outside the set');
@@ -100,10 +102,10 @@ while true
     if currentStep > plotTf
         break
     end
-    pause(0.01)
+    pause(dt)
 end
 legend([h1, hlt, h2, h3],{'states $\hat{l}_{xy}$, $\hat{p}_{xy}$ ', 'camera heading $\hat{l}_{\theta}$ ',...
-    'estimated robot $P_{xy}$ ', 'robot body '}, 'Interpreter', 'latex', 'FontSize', 30, 'NumColumns', 2, 'Location', 'southoutside');
+        'estimated robot $P_{xy}$ ', 'robot body '}, 'Interpreter', 'latex', 'FontSize', 30, 'NumColumns', 2, 'Location', 'southoutside');
 fclose(fid);
 
 %% Sub function used to pre-process incoming data
