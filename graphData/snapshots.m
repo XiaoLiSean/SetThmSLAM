@@ -25,8 +25,8 @@ function showMap(pr, costmap)
         h2  = plot([pr.l_hat(1,i), pr.l_hat(1,i)+0.25*pr.Measurable_R*cos(pr.l_hat(3,i))],...
              [pr.l_hat(2,i), pr.l_hat(2,i)+0.25*pr.Measurable_R*sin(pr.l_hat(3,i))], 'r--', 'LineWidth', 2);
         if i == 1
-            set(h1,{'DisplayName'},{'nominal states $\hat{l}_{xy}$ '})
-            set(h2,{'DisplayName'},{'nominal states $\hat{l}_{\theta}, \hat{p}_{\theta}$ '})
+            set(h1,{'DisplayName'},{'camera position $\hat{l}_{xy}$ '})
+            set(h2,{'DisplayName'},{'camera/robot orientation $\hat{l}_{\theta}, \hat{p}_{\theta}$ '})
         else
             h1.Annotation.LegendInformation.IconDisplayStyle = 'off';
             h2.Annotation.LegendInformation.IconDisplayStyle = 'off';

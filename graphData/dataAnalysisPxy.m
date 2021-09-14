@@ -85,7 +85,7 @@ for i_cam = 1:length(cameraTypes)
 end
 ax  = axes(fig,'visible','off');
 ax.YLabel.Visible   ='on';
-ylabel(ax, {'$V(P_{xy})/(c_w\cdot c_l)$ [$m^2$]', ''}, 'Interpreter','latex', 'FontSize', fontSize);
+ylabel(ax, {'$V(P_{xy})/(c_w\cdot c_l)$', ''}, 'Interpreter','latex', 'FontSize', fontSize);
 currentFigure   = gcf;
 title(currentFigure.Children(end), 'Monocular Camera', 'Interpreter', 'latex', 'FontSize', fontSize);
 title(currentFigure.Children(3), 'Stereo Camera', 'Interpreter', 'latex', 'FontSize', fontSize);
@@ -154,7 +154,7 @@ for i_cam = 1:length(cameraTypes)
 end
 ax  = axes(fig,'visible','off');
 ax.YLabel.Visible   ='on';
-ylabel(ax, {'$V(P_{xy})/(c_w\cdot c_l)$ [$m^2$]', ''}, 'Interpreter','latex', 'FontSize', fontSize);
+ylabel(ax, {'$V(P_{xy})/(c_w\cdot c_l)$', ''}, 'Interpreter','latex', 'FontSize', fontSize);
 currentFigure   = gcf;
 title(currentFigure.Children(8), 'Monocular Camera', 'Interpreter', 'latex', 'FontSize', fontSize);
 title(currentFigure.Children(4), 'Stereo Camera', 'Interpreter', 'latex', 'FontSize', fontSize);
