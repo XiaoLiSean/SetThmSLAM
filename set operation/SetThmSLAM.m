@@ -18,6 +18,7 @@ classdef SetThmSLAM < matlab.mixin.Copyable
         
         %% Measurement information
         isStereoVision;
+        knownDataAssociation;
         Ma; % Ma{i} angle measurement set for camera i
         Mr; % Mr{i} range measurement set for camera i
         Measurable_R; % Markers within Measurable_R are measurable
@@ -43,7 +44,7 @@ classdef SetThmSLAM < matlab.mixin.Copyable
     end
     
     methods
-        function obj = SetThmSLAM(pr, isStereoVision, updateCamera, enableRigidBodyConstraints, isReconstruction, relativeNominalMarkerStates)
+        function obj = SetThmSLAM(pr, isStereoVision, knownDataAssociation, updateCamera, enableRigidBodyConstraints, isReconstruction, relativeNominalMarkerStates)
             obj.n           = pr.n;
             obj.m           = pr.m;
             for i = 1:obj.n
@@ -64,6 +65,7 @@ classdef SetThmSLAM < matlab.mixin.Copyable
             obj.Measurable_R                = pr.Measurable_R;
             obj.dVFractionThreshold         = pr.dVFractionThreshold;
             obj.enableRigidBodyConstraints  = enableRigidBodyConstraints;
+            obj.knownDataAssociation        = knownDataAssociation;
             obj.isReconstruction            = isReconstruction;
             obj.updateCamera                = updateCamera;
             if obj.enableRigidBodyConstraints
@@ -87,8 +89,28 @@ classdef SetThmSLAM < matlab.mixin.Copyable
             else
                 obj.Ma  = Ma;
             end
-            for i = 1:obj.m
-                obj.Au{i}{1}    = A_hat{i};
+            if obj.knownDataAssociation
+                for i = 1:obj.m
+                    obj.Au{i}{1}    = A_hat{i};
+                end
+            else
+                for i = 1:obj.m
+                    A_raw   = obj.getAssociationMatrice(i);
+                end
+            end
+        end
+        
+        % get raw association matrice A for i'th camera
+        function A_raw  = getAssociationMatrice(obj, i)
+            A_raw   = zeros(length(obj.Ma{i}), obj.n);
+            for q = 1:length(obj.Ma{i})
+                PM              = obj.getConvPM(i, q);
+                feasibleArea    = plus(obj.Lxy{i}, PM);
+                for j = 1:obj.n
+                    if ~and(obj.P{j}, feasibleArea).isempty()
+                        A_raw(q,j)  = 1;
+                    end
+                end
             end
         end
         
@@ -101,9 +123,9 @@ classdef SetThmSLAM < matlab.mixin.Copyable
             obj.updatePrevVolume();
         end
         
-        %% Set propagation by designated distance in [meter]
+        % Set propagation by designated distance in [meter]
         function propagateSetsWithDistance(obj, distance)
-            B_inf   = interval([-1;-1], [1;1]);
+            noiseRange      = zonotope(interval([-obj.e_w(1); -obj.e_w(2)], [obj.e_w(1); obj.e_w(2)]));
             for i = 1:obj.n
                 obj.P{i}    = plus(obj.P{i}, mtimes(diag(distance), B_inf));
             end
@@ -247,12 +269,14 @@ classdef SetThmSLAM < matlab.mixin.Copyable
                 end
             end
         end
+        
         % Update Pi using constraint between pi and pj (effecient version)
         function update_ith_P_by_constraint(obj, i, constraint, j)   
             unitP       = decomposeCirc2ConvPolygons([0,0], constraint.sup, obj.ringSecNum);
             overP       = plus(obj.P{j}, unitP);
             obj.P{i}    = and(obj.P{i}, overP);
         end
+        
         % Update Pi using constraint between pi and pj (Tedious version and computational complex)
         function update_ith_P_by_constraint_tedious(obj, i, constraint, j)
             [r, c, ~]   = ExactMinBoundCircle(obj.P{j}.P.V);
@@ -301,7 +325,7 @@ classdef SetThmSLAM < matlab.mixin.Copyable
                 end
             end
         end
-        
+
         % Update Volume of each sets
         function updatePrevVolume(obj)
             for i = 1:obj.n

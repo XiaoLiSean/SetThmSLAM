@@ -5,7 +5,6 @@ classdef params < matlab.mixin.Copyable
         occupiedLots    = [0, 1, 1, 0, 1, 1;
                            1, 0, 1, 1, 0, 0]; % Occupancy array of parking lots
         lotSize         = [3.5, 5.5]; % Individul parking lot is Dimension [width/x, height/y] in meter
-        maxSpeed        = 5; % Maximum speed at the parking lot (m/sec)
         % note: the maxSpeed is not a hard constraint in the parking valet
         % library, sometimes it will exceed the maxSpeed which will cause
         % unwanted behavior and the nominal states will no longer contained
@@ -41,14 +40,17 @@ classdef params < matlab.mixin.Copyable
         FrontOverhang   = 0.9;
         p_0             = [10; 5; 0]; % RC car initial state vector [x,y,theta(deg)] defined at the center of rear wheel axis
         maxSteeringAngle    = 35; % in degrees
+        maxSpeed            = 5; % Maximum speed at the parking lot (m/sec)
         safetyIndex         = 1.5; % ensure safe propagation given the maxSpeed can be wrong
+        
+        %% Error bound in RC car control signal (alpha, a)
 
         %% Path planning
         numCircles          = 4; % Collision checker refer to (vehicleCostmap and CollisionChecker in MATLAB Doc.)
         approxSeparation    = 0.1; % Specify number of poses to return using a separation of approximately 0.1 m
         
         %% Constant used in initializing and Update Uncertainty Set
-        epsilon_Lt  = deg2rad(5); % in rad
+        epsilon_Lt  = deg2rad(2); % in rad
         epsilon_Lxy = 0.1; % in meter
         epsilon_P   = 0.5; % in meter
         epsilon_rb  = 0.00; % rigid body uncertainty in [meter]

@@ -14,6 +14,7 @@ classdef ParkingValet < matlab.mixin.Copyable
         enableFastSLAM;
         enableSetSLAM;
         enableCtrlSignalProp;
+        knownDataAssociation;
         
         %% Measurement information
         isStereoVision;
@@ -64,7 +65,7 @@ classdef ParkingValet < matlab.mixin.Copyable
     end
     methods
         %% Initialization
-        function obj = ParkingValet(parameters, cameraType, enableCamUpdate, enableFastSLAM, enableSetSLAM,...
+        function obj = ParkingValet(parameters, cameraType, enableCamUpdate, enableFastSLAM, enableSetSLAM, knownDataAssociation,...
                                         enableRigidBodyConstraints, isReconstruction, enableCtrlSignal,...
                                         saveHistory, saveHistoryConcise)
             addpath('./util')
@@ -116,8 +117,9 @@ classdef ParkingValet < matlab.mixin.Copyable
             obj.enableSetSLAM           = enableSetSLAM;
             obj.enableFastSLAM          = enableFastSLAM;
             obj.enableCtrlSignalProp    = enableCtrlSignal;
+            obj.knownDataAssociation    = knownDataAssociation;
             if enableSetSLAM
-                obj.SetSLAM             = SetThmSLAM(obj.pr, obj.isStereoVision, enableCamUpdate(1), enableRigidBodyConstraints, isReconstruction, obj.p_hat_rel);
+                obj.SetSLAM             = SetThmSLAM(obj.pr, obj.isStereoVision, obj.knownDataAssociation, enableCamUpdate(1), enableRigidBodyConstraints, isReconstruction, obj.p_hat_rel);
             end
             if enableFastSLAM
                 obj.FastSLAM            = FastSLAM(obj.pr, obj.isStereoVision, enableCamUpdate(2), isReconstruction);
@@ -157,8 +159,12 @@ classdef ParkingValet < matlab.mixin.Copyable
                 if (propRes < epsilon || obj.pr.propTime - propRes < epsilon) && current_time ~= 0
                     obj.vehicleSim.updateKinematics(obj.pr.propTime);
                     deltaXY     = obj.updateNominalStates(currentPose);
-                    if obj.enableSetSLAM
-                        obj.SetSLAM.propagateSets();
+                    if obj.enableSetSLAM  
+                        if obj.enableCtrlSignalProp(1)
+                            obj.SetSLAM.propagateSetsWithDistance(deltaXY)
+                        else
+                            obj.SetSLAM.propagateSets();
+                        end
                     end
                     if obj.enableFastSLAM
                         if obj.enableCtrlSignalProp(2)
@@ -240,8 +246,12 @@ classdef ParkingValet < matlab.mixin.Copyable
                     pose_car    = [currentPose(1), currentPose(2), rad2deg(currentPose(3))];
                     obj.vehicleSim.setVehiclePose(pose_car);
                     deltaXY     = obj.updateNominalStates(pose_car);
-                    if obj.enableSetSLAM
-                        obj.SetSLAM.propagateSets();
+                    if obj.enableSetSLAM  
+                        if obj.enableCtrlSignalProp(1)
+                            obj.SetSLAM.propagateSetsWithDistance(deltaXY)
+                        else
+                            obj.SetSLAM.propagateSets();
+                        end
                     end
                     if obj.enableFastSLAM
                         if obj.enableCtrlSignalProp(2)

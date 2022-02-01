@@ -11,7 +11,7 @@ set(gcf,'color','w');
 set(gcf,'Position',[0 0 900 900])
 pause(5)
 pr          = params;
-SetSLAM     = SetThmSLAM(pr, true, false, false, false, []);
+SetSLAM     = SetThmSLAM(pr, true, true, false, false, false, []);
 fid         = fopen('calibrationData/calibratedData.txt','rt');
 is_initial  = true;
 

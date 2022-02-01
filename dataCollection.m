@@ -2,6 +2,7 @@ clear all; clc;
 close all;
 
 %% Initialize Parking Space and Visualization
+knownDataAssociation    = true; % if the measurement to marker associations are known
 saveHistoryConcise      = true; % disable save full history of the simulation
 usePrevTrajectory       = true; % use previous stored path
 isReconstruction        = true; % reconstruction and plot the defined vehicle state instead of the markers
@@ -47,7 +48,7 @@ for k = 1:length(e_mesh)
             disp('Data collection '+cameraType+num2str(k)+'_'+num2str(i)+'_'+num2str(e_mesh{k}(i)))
         end
         parameters.resetParams(e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P);
-        PV                      = ParkingValet(parameters, cameraType, enableCamUpdate, enableFastSLAM, enableSetSLAM,...
+        PV                      = ParkingValet(parameters, cameraType, enableCamUpdate, enableFastSLAM, enableSetSLAM, knownDataAssociation,...
                                                enableRBConstraints, isReconstruction, enableCtrlSignal, saveHistoryConcise);
         PV.simulateHistory(History);
         saveHistory(PV, cameraType, 0.075, e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P)

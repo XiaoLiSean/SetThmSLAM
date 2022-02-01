@@ -3,6 +3,7 @@ close all;
 
 %% Initialize Parking Space and Visualization
 cameraType              = 'stereo'; % ['mono'/'stereo']
+knownDataAssociation    = true; % if the measurement to marker associations are known
 saveHistory             = false; % if save the simulation history
 saveHistoryConcise      = false & saveHistory; % disable save full history of the simulation
 usePrevTrajectory       = true; % use previous stored path
@@ -25,7 +26,7 @@ Pxys                    = [];
 for k = 1:length(particleNums)
     pr  = params;
     pr.setParticleNum(particleNums(k));
-    PV  = ParkingValet(pr, cameraType, enableCamUpdate, enableFastSLAM, enableSetSLAM,...
+    PV  = ParkingValet(pr, cameraType, enableCamUpdate, enableFastSLAM, enableSetSLAM, knownDataAssociation, ...
         enableRBConstraints, isReconstruction, enableCtrlSignal, saveHistory, saveHistoryConcise);
     currentPlotStep = 0;
     trajectory      = zeros(length(History), 2);
