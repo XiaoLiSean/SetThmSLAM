@@ -119,15 +119,16 @@ classdef SetThmSLAM < matlab.mixin.Copyable
         function calculateMatchingSolutions(obj, A_raw, i)            
             C       = perms(1:size(A_raw, 2));
             [I,J]   = find(A_raw == 0);
+
             for ii = 1:length(I)
                 del_rows        = find(C(:,I(ii)) == J(ii));
                 C(del_rows,:)   = [];
             end
 
             for sol_i = 1:size(C,1)
-                obj.Au{i}{sol_i} = zeros(size(A_raw));
+                obj.Au{sol_i}   = zeros(size(A_raw));
                 for row_i = 1:size(A_raw,1)
-                    obj.Au{i}{sol_i}(row_i, C(sol_i,row_i)) = 1;
+                    obj.Au{i}{sol_i}(row_i, C(sol_i,row_i))    = 1;
                 end
             end
         end

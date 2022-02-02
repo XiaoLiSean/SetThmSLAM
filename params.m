@@ -50,10 +50,10 @@ classdef params < matlab.mixin.Copyable
         approxSeparation    = 0.1; % Specify number of poses to return using a separation of approximately 0.1 m
         
         %% Constant used in initializing and Update Uncertainty Set
-        epsilon_Lt  = deg2rad(2); % in rad
+        epsilon_Lt  = deg2rad(5); % in rad
         epsilon_Lxy = 0.1; % in meter
         epsilon_P   = 0.5; % in meter
-        epsilon_rb  = 0.00; % rigid body uncertainty in [meter]
+        epsilon_rb  = 0.01; % rigid body uncertainty in [meter]
         dVFractionThreshold     = 0.01; % used to determine the termination of set update
         ring_sector_num         = 8; % sector the constraint ring to parts as convex polygons
                
