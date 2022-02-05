@@ -95,6 +95,10 @@ classdef SetThmSLAM < matlab.mixin.Copyable
                 end
             else
                 for i = 1:obj.m
+                    if isempty(obj.Ma{i})
+                        obj.Au{i}   = {};
+                        continue
+                    end
                     A_raw   = obj.getAssociationMatrice(i);
                     obj.calculateMatchingSolutions(A_raw, i)
                 end
@@ -116,9 +120,10 @@ classdef SetThmSLAM < matlab.mixin.Copyable
         end
         
         % get all possible matching solutions from raw association matrix
-        function calculateMatchingSolutions(obj, A_raw, i)            
-            C       = perms(1:size(A_raw, 2));
-            [I,J]   = find(A_raw == 0);
+        function calculateMatchingSolutions(obj, A_raw, i)
+            obj.Au{i}   = {};
+            C           = perms(1:size(A_raw, 2));
+            [I,J]       = find(A_raw == 0);
             for ii = 1:length(I)
                 del_rows        = find(C(:,I(ii)) == J(ii));
                 C(del_rows,:)   = [];
@@ -144,8 +149,7 @@ classdef SetThmSLAM < matlab.mixin.Copyable
         % Set propagation by designated distance in [meter]
         function propagateSetsWithDistance(obj, deltaXY)
             for i = 1:obj.n
-                dXY         = zonotope(interval([-obj.e_w(1)+deltaXY{i}(1); -obj.e_w(2)+deltaXY{i}(2)],...
-                    [obj.e_w(1)+deltaXY{i}(1); obj.e_w(2)+deltaXY{i}(2)]));
+                dXY         = zonotope(interval([deltaXY{i}(1); deltaXY{i}(2)], [deltaXY{i}(1); deltaXY{i}(2)]));
                 obj.P{i}    = plus(obj.P{i}, dXY);
             end
             obj.updatePrevVolume();

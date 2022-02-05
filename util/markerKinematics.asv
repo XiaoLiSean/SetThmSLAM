@@ -1,0 +1,20 @@
+classdef markerKinematics < matlab.mixin.Copyable
+    properties
+        wheelbase; % length of wheelbase in meter
+        l_os; % offset length from center of rear wheel axis
+        theta_os; % offset angle formed with vehicle orientationorigining at center of rear wheel axis
+        dt; % discrete time update interval length
+        p_hat; % Nominal marker position
+    end
+    methods
+        function obj = markerKinematics(wheelbase, dt, p_hat, p_hat_rel)
+            obj.wheelbase   = wheelbase; 
+            obj.dt          = dt; 
+            obj.p_hat       = p_hat(:);
+            obj.l_os        = sqrt(p_hat_rel(1)^2 + p_hat_rel(2)^2);
+            obj.theta_os    = atan2(p_hat_rel(2), p_hat_rel(1));
+        end
+        function updat
+    end
+end
+        

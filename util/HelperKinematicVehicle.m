@@ -190,13 +190,20 @@ classdef HelperKinematicVehicle < handle
             speed = abs(obj.Velocity) + dt*(obj.AccelCmd - obj.DecelCmd);
             obj.Velocity = max(speed, 0)*obj.Direction;
             
-            delta_theta = obj.Velocity/obj.VehicleDimensions.Wheelbase * sind(obj.SteeringAngle);
-            dx = dt*obj.Velocity*cosd(obj.Pose(3) + obj.SteeringAngle) + ...
-                 dt*obj.VehicleDimensions.Wheelbase*sind(obj.Pose(3))*delta_theta;
-            dy = dt*obj.Velocity*sind(obj.Pose(3) + obj.SteeringAngle) - ...
-                 dt*obj.VehicleDimensions.Wheelbase*cosd(obj.Pose(3))*delta_theta;
-            dtheta = dt * delta_theta;
-            
+%             delta_theta = obj.Velocity/obj.VehicleDimensions.Wheelbase * sind(obj.SteeringAngle);
+%             dx = dt*obj.Velocity*cosd(obj.Pose(3) + obj.SteeringAngle) + ...
+%                  dt*obj.VehicleDimensions.Wheelbase*sind(obj.Pose(3))*delta_theta;
+%             dy = dt*obj.Velocity*sind(obj.Pose(3) + obj.SteeringAngle) - ...
+%                  dt*obj.VehicleDimensions.Wheelbase*cosd(obj.Pose(3))*delta_theta;
+%             dtheta = dt * delta_theta;
+            % =============================================================
+            % This part is modified by Xiao Li at 2022-02-05 15:50:50
+            % =============================================================
+            dtheta  = dt * obj.Velocity / obj.VehicleDimensions.Wheelbase * sind(obj.SteeringAngle);
+            dx      = dt * obj.Velocity * cosd(obj.SteeringAngle) * cos(deg2rad(obj.Pose(3)) + 0.5*dtheta);
+            dy      = dt * obj.Velocity * cosd(obj.SteeringAngle) * sin(deg2rad(obj.Pose(3)) + 0.5*dtheta);
+            % =============================================================
+                        
             % Update vehicle state accordingly
             obj.Pose = obj.Pose + [dx dy rad2deg(dtheta)];
             obj.Pose(3) = mod(obj.Pose(3), 360);        

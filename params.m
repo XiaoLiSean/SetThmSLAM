@@ -23,7 +23,7 @@ classdef params < matlab.mixin.Copyable
                    15, 20, pi/2; 22.5, 20, pi/2; 30, 20, pi/2; -2, 10, 0; -2, 20, 0; 13, 15, -pi;]'; % Camera Nominal State [x (m);y (m);theta (rad)]  
         Measurable_R    = 20; % Markers within Measurable_R are measurable
         e_va            = deg2rad(5); % angle measurement noise bound in rad
-        e_vr            = 0.1; % range measurement noise bound in rad
+        e_vr            = 0.1; % range measurement noise bound in meter
         
         %% Simulation time sychronization and management
         simLoopDt   = 0.01; % [sec] time step of each simulation loop (other time constant should be interger times of this)
@@ -53,7 +53,7 @@ classdef params < matlab.mixin.Copyable
         epsilon_Lt  = deg2rad(5); % in rad
         epsilon_Lxy = 0.1; % in meter
         epsilon_P   = 0.5; % in meter
-        epsilon_rb  = 0.01; % rigid body uncertainty in [meter]
+        epsilon_rb  = 0.00; % rigid body uncertainty in [meter]
         dVFractionThreshold     = 0.01; % used to determine the termination of set update
         ring_sector_num         = 8; % sector the constraint ring to parts as convex polygons
                

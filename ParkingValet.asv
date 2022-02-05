@@ -247,7 +247,10 @@ classdef ParkingValet < matlab.mixin.Copyable
                 % Control Update of Vehicle states and sets
                 propRes     = mod(current_time, obj.pr.propTime);
                 if (propRes < epsilon || obj.pr.propTime - propRes < epsilon) && current_time ~= 0
-                    pose_car    = [currentPose(1), currentPose(2), rad2deg(currentPose(3))];                    
+                    pose_car    = [currentPose(1), currentPose(2), rad2deg(currentPose(3))];
+                    for ith_marker = 1:obj.pr.n
+                        obj.markerKinematics.
+                    end
                     obj.vehicleSim.setVehiclePose(pose_car);
                     deltaXY     = obj.updateNominalStates(pose_car);
                     if obj.enableSetSLAM  
