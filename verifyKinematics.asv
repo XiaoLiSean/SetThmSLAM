@@ -25,19 +25,4 @@ PV                      = ParkingValet(params, cameraType, enableCamUpdate, enab
 History     = load('Path.mat').Historys;
 PV.simulateHistory(History);
 
-
-for j = 1:4
-    x_parkvalet{j}  = zeros(1,length(trajHis));
-    y_parkvalet{j}  = zeros(1,length(trajHis));
-    x_kinematic{j}  = zeros(1,length(trajHis));
-    y_kinematic{j}  = zeros(1,length(trajHis));
-    for i = 1:length(trajHis)
-        x_parkvalet{j}(i)   = trajHis{i}.parkValet{j}(1);
-        y_parkvalet{j}(i)   = trajHis{i}.parkValet{j}(2);
-        x_kinematic{j}(i)   = trajHis{i}.kinematic(1,j);
-        y_kinematic{j}(i)   = trajHis{i}.kinematic(2,j);
-    end
-    figure(j+1)
-    plot(x_parkvalet{j}, y_parkvalet{j}, 'r-'); hold on;
-    plot(x_kinematic{j}, y_kinematic{j}, 'k--');
-end
+x_parkvalet
