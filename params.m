@@ -20,7 +20,8 @@ classdef params < matlab.mixin.Copyable
         l_hat   = [0, -2, 55*pi/180; 10, -2, 7*pi/18; 22.5, -2, pi/2; 35, -2, 11*pi/18; 45, -2, 125*pi/180;
                    15, 10, -pi/2; 22.5, 10, -pi/2; 30, 10, -pi/2; 47, 10, pi; 47, 20, pi; 32, 15, 0;
                    0, 32, -55*pi/180; 10, 32, -7*pi/18; 22.5, 32, -pi/2; 35, 32, -11*pi/18; 45, 32, -125*pi/180;
-                   15, 20, pi/2; 22.5, 20, pi/2; 30, 20, pi/2; -2, 10, 0; -2, 20, 0; 13, 15, -pi;]'; % Camera Nominal State [x (m);y (m);theta (rad)]  
+                   15, 20, pi/2; 22.5, 20, pi/2; 30, 20, pi/2; -2, 10, 0; -2, 20, 0; 13, 15, -pi;
+                   12, 10, -14*pi/18; 33, 10, -4*pi/18; 12, 20, 14*pi/18; 33, 20, 4*pi/18]'; % Camera Nominal State [x (m);y (m);theta (rad)]  
         Measurable_R    = 20; % Markers within Measurable_R are measurable
         e_va            = deg2rad(5); % angle measurement noise bound in rad
         e_vr            = 0.1; % range measurement noise bound in meter
@@ -42,6 +43,8 @@ classdef params < matlab.mixin.Copyable
         maxSteeringAngle    = 35; % in degrees
         maxSpeed            = 5; % Maximum speed at the parking lot (m/sec)
         safetyIndex         = 1.5; % ensure safe propagation given the maxSpeed can be wrong
+        e_steering          = deg2rad(5); % noise of steering control signal in [rad]
+        e_velocity          = 2; % noise of velocity control signal in [m/s] 
         
         %% Error bound in RC car control signal (alpha, a)
 

@@ -146,10 +146,19 @@ classdef SetThmSLAM < matlab.mixin.Copyable
             obj.updatePrevVolume();
         end
         
-        % Set propagation by designated distance in [meter]
-        function propagateSetsWithDistance(obj, deltaXY)
-            for i = 1:obj.n
-                dXY         = zonotope(interval([deltaXY{i}(1); deltaXY{i}(2)], [deltaXY{i}(1); deltaXY{i}(2)]));
+        % Set propagation by ctrl signal 
+        function propagateSetsWithCtrl(obj, alpha, v, dt, params)
+            for i = 1:obj.n 
+                param           = params{i};
+                displacement    = v*dt*sqrt((param.l_os*sin(alpha)/param.wheelbase)^2+...
+                    (cos(alpha))^2-param.l_os*sin(param.theta_os)*sin(2*alpha)/param.wheelbase);
+                interval_const  = interval(param.wheelbase*cos(param.theta_os), param.wheelbase*cos(param.theta_os));
+                angleShift      = obj.Pt + param.theta_os - pi/2 + v*dt*sin(alpha)/(2*param.wheelbase)+...
+                    intervalAtan2(interval_const, (param.wheelbase*sin(param.theta_os)-param.l_os*tan(alpha)));
+                
+                dX          = displacement*cos(angleShift);
+                dY          = displacement*sin(angleShift);
+                dXY         = zonotope(interval([dX.inf; dY.inf], [dX.sup; dY.sup]));
                 obj.P{i}    = plus(obj.P{i}, dXY);
             end
             obj.updatePrevVolume();

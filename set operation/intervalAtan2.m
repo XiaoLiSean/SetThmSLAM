@@ -1,10 +1,47 @@
 function angle = intervalAtan2(Y, X)
-
-    % case the box of XY is a line
-    if Y.inf == Y.sup || X.inf == X.sup
-        error('intervalAtan2 not support line sets');
+    
+    %======================================================================
+    % Case the box of XY is a line or point
+    %======================================================================
+    if Y.inf == Y.sup && X.inf == X.sup
+        angle   = atan2(Y.sup, X.sup);
+        angle   = interval(angle, angle);
+        return
+    elseif Y.inf == Y.sup && X.inf ~= X.sup
+        if Y.inf == 0 && X.inf >= 0
+            angle   = interval(0, 0);
+        elseif Y.inf == 0 && X.sup <= 0
+            angle   = interval(pi, pi);
+        elseif Y.inf == 0 && X.sup > 0 && X.inf < 0
+            error('not support union of intervals [-pi,-pi], [pi,pi]');
+        else
+            theta1  = atan2(Y.inf, X.inf);
+            theta2  = atan2(Y.inf, X.sup);
+            theta_inf   = min([theta1, theta2]);
+            theta_sup   = max([theta1, theta2]);
+            angle       = interval(theta_inf, theta_sup);
+        end
+        return
+    elseif Y.inf ~= Y.sup && X.inf == X.sup
+        if X.inf == 0 && Y.inf >= 0
+            angle   = interval(pi/2, pi/2);
+        elseif X.inf == 0 && Y.sup <= 0
+            angle   = interval(-pi/2, -pi/2);
+        elseif X.inf == 0 && Y.sup > 0 && Y.inf < 0
+            error('not support union of intervals [-pi/2,-pi/2], [pi/2,pi/2]');
+        else
+            theta1  = atan2(Y.sup, X.inf);
+            theta2  = atan2(Y.inf, X.inf);
+            theta_inf   = min([theta1, theta2]);
+            theta_sup   = max([theta1, theta2]);
+            angle       = interval(theta_inf, theta_sup);
+        end
+        return
     end
-
+    
+    %======================================================================
+    % Case box shape
+    %======================================================================
     %----------------------------------------------------------------------
     % case: 0 is in the interior of box XY;
     %----------------------------------------------------------------------

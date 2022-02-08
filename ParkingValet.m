@@ -249,10 +249,12 @@ classdef ParkingValet < matlab.mixin.Copyable
                 if (propRes < epsilon || obj.pr.propTime - propRes < epsilon) && current_time ~= 0
                     pose_car    = [currentPose(1), currentPose(2), rad2deg(currentPose(3))];                    
                     obj.vehicleSim.setVehiclePose(pose_car);
-                    deltaXY     = obj.updateNominalStates(pose_car);
+                    obj.updateNominalStates(pose_car);
                     if obj.enableSetSLAM  
                         if obj.enableCtrlSignalProp(1)
-                            obj.SetSLAM.propagateSetsWithDistance(deltaXY)
+                            steeringInterval    = interval(steeringCtrl-obj.pr.e_steering, steeringCtrl+obj.pr.e_steering);
+                            velocityInterval    = interval(velocityCtrl-obj.pr.e_velocity, velocityCtrl+obj.pr.e_velocity);
+                            obj.SetSLAM.propagateSetsWithCtrl(steeringInterval, velocityInterval, obj.pr.propTime, obj.markerKinematics)
                         else
                             obj.SetSLAM.propagateSets();
                         end
