@@ -234,7 +234,6 @@ classdef ParkingValet < matlab.mixin.Copyable
             time_step       = 1;
             epsilon         = 0.9*obj.pr.simLoopDt; % take care of numerical error in computation
             % Simulation loop for every obj.pr.simLoopDt
-            global trajHis
             while true
                 % =====================================================
                 % Plan new path if sub-goal is reached
@@ -248,15 +247,7 @@ classdef ParkingValet < matlab.mixin.Copyable
                 % Control Update of Vehicle states and sets
                 propRes     = mod(current_time, obj.pr.propTime);
                 if (propRes < epsilon || obj.pr.propTime - propRes < epsilon) && current_time ~= 0
-                    pose_car    = [currentPose(1), currentPose(2), rad2deg(currentPose(3))];
-                    
-                    for ith_marker = 1:obj.pr.n
-                        obj.markerKinematics{ith_marker}.propagateMarker(steeringCtrl, velocityCtrl, currentPose(3));
-                    end
-                    markerTraj.parkValet    = obj.p_hat;
-                    markerTraj.kinematic    = [obj.markerKinematics{1}.p_hat,obj.markerKinematics{2}.p_hat,obj.markerKinematics{3}.p_hat,obj.markerKinematics{4}.p_hat];
-                    trajHis{end+1}= markerTraj;
-                    
+                    pose_car    = [currentPose(1), currentPose(2), rad2deg(currentPose(3))];                    
                     obj.vehicleSim.setVehiclePose(pose_car);
                     deltaXY     = obj.updateNominalStates(pose_car);
                     if obj.enableSetSLAM  
