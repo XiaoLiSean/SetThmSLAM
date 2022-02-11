@@ -62,7 +62,6 @@ classdef EKFCamera < matlab.mixin.Copyable
                     return;
                 end
             end
-
         end
         
         function reinitialMeanAndVar(obj)

@@ -7,16 +7,22 @@
         weights; % Particle Weight
         mu; % mean of marker and camera states
         Sigma; % variance of marker and camera states  
+        markerKinematics; % markerKinematics{i} stores function to propagate uncertainty sets
         
         %% Measurement and data association
         isStereoVision;
+        knownDataAssociation;
+        associationCandidates; % associationCandidates{i} is a matrix whose row vectors contain all the possible marker associations to i measurements
         enableCamUpdate; % if enable camera state update
         Ma; % Ma{i} angle measurement set for camera i
         Mr; % Mr{i} range measurement set for camera i
-        Au; % Au{i}{.} is matching solution matrices for measurement from camera i
+        Au; % if known data association: Au{i} is matching solution matrix for measurement from camera i
+            % otherwise: Au{i}{k} is Maximum Likelihood (ML) matching solution matrix for measurement from camera in k'th particle
         
         %% Bounded error for uncertainty sets
         e_w; % control input p_hat{i}{k+1} - p_hat{i}{k} is bounded by e_w
+        e_steering; % noise of steering control signal in [rad] if ctrl signal is available
+        e_velocity; % noise of velocity control signal in [m/s] if ctrl signal is available
         
         %% Variables used to reconstruct vehicle state sets
         isReconstruction; % reconstruction and plot the defined vehicle state instead of the markers
@@ -25,15 +31,22 @@
     end
     
     methods
-        function obj = FastSLAM(pr, isStereoVision, enableCamUpdate, isReconstruction)
+        function obj = FastSLAM(pr, markerKinematics, isStereoVision, knownDataAssociation, enableCamUpdate, isReconstruction)
             obj.n       = pr.n;
             obj.m       = pr.m;
             obj.s       = pr.particle_num;
             obj.e_w     = pr.e_w;
+            obj.e_steering          = pr.e_steering;
+            obj.e_velocity          = pr.e_velocity;
+            obj.markerKinematics    = markerKinematics;
             obj.isStereoVision      = isStereoVision;
             obj.enableCamUpdate     = enableCamUpdate;
-            obj.isReconstruction    =isReconstruction;
-            obj.weights             = ones(obj.s,1)/obj.s;
+            obj.isReconstruction    = isReconstruction;
+            obj.weights             = ones(obj.s,1)/obj.s;            
+            obj.knownDataAssociation    = knownDataAssociation;
+            if ~obj.knownDataAssociation
+                obj.associationCandidates   = getAssociationCandidates(obj.n);
+            end
             % marker in 2D using EKF
             for i = 1:obj.n
                 samples     = sampleBox(zonotope(pr.P{i}), obj.s);
@@ -66,13 +79,16 @@
             end
         end
         
-        function propagateParticlesWithDistance(obj, deltaXY)
-            noiseRange      = interval([-obj.e_w(1); -obj.e_w(2)], [obj.e_w(1); obj.e_w(2)]);
-            noiseSample     = sampleBox(zonotope(noiseRange), obj.s*obj.n);
+        function propagateParticlesWithCtrl(obj, alpha_hat, v_hat, dt)
+            noiseRange      = interval([-obj.e_steering; -obj.e_velocity], [obj.e_steering; obj.e_velocity]);
+            noiseSample     = sampleBox(zonotope(noiseRange), obj.s);
             for k = 1:obj.s
+                alpha       = alpha_hat + noiseSample(1, k);
+                v           = v_hat + noiseSample(2, k);
+                dState      = obj.particles{k}.Marker{2}.state - obj.particles{k}.Marker{1}.state;
+                theta_car   = atan2(dState(2), dState(1));
                 for i = 1:obj.n
-                    delta   = deltaXY{i} + noiseSample(:,(k-1)*obj.n+i);
-                    obj.particles{k}.Marker{i}.state    = obj.particles{k}.Marker{i}.state + delta;
+                    obj.particles{k}.Marker{i}.state    = obj.markerKinematics{i}.propagateMarker(obj.particles{k}.Marker{i}.state, alpha, v, dt, theta_car);
                 end
             end
         end
@@ -85,19 +101,19 @@
                 if isempty(obj.Au{i})
                     continue
                 end
-                markers     = getUpdateableArr(obj.Au{i});
-                for idx = 1:length(markers)
-                    j   = markers(idx);
-                    q   = find(obj.Au{i}{1}(:,j)); % q'th measurement associated with j'th marker; 
-                    if obj.isStereoVision
-                        bearing = obj.Ma{i}(q);
-                        range   = obj.Mr{i}(q);
-                        z       = [bearing; range];
-                    else
-                        z       = obj.Ma{i}(q);  
-                    end
+                for k = 1:obj.s
+                    markers     = getUpdateableArr(obj.Au{i}{k});
+                    for idx = 1:length(markers)
+                        j   = markers(idx);
+                        q   = find(obj.Au{i}{k}(:,j)); % q'th measurement associated with j'th marker; 
+                        if obj.isStereoVision
+                            bearing = obj.Ma{i}(q);
+                            range   = obj.Mr{i}(q);
+                            z       = [bearing; range];
+                        else
+                            z       = obj.Ma{i}(q);  
+                        end
                     % update particle weights with measurement z
-                    for k = 1:obj.s
                         p_of_z  = obj.particles{k}.EKFCamera{i}.measurementUpdate(z, obj.particles{k}.Marker{j}.state, obj.enableCamUpdate);
                         obj.weights(k)  = obj.weights(k)*p_of_z; 
                     end
@@ -127,8 +143,75 @@
             else
                 obj.Ma  = Ma;
             end
-            for i = 1:obj.m
-                obj.Au{i}{1}    = A_hat{i};
+            if obj.knownDataAssociation
+                for i = 1:obj.m                      
+                    if isempty(obj.Ma{i})
+                        obj.Au{i}   = {};
+                        continue
+                    end
+                    for k = 1:obj.s
+                        obj.Au{i}{k}    = A_hat{i};
+                    end
+                end
+            else
+                for i = 1:obj.m                        
+                    if isempty(obj.Ma{i})
+                        obj.Au{i}   = {};
+                        continue
+                    end
+                    for k = 1:obj.s
+                        obj.maximumLikelihoodAssociation(i, k);
+                    end
+                end
+            end
+        end
+        
+        % Au{i}{k} is Maximum Likelihood (ML) matching solution 
+        % matrix for measurement from camera in k'th particle
+        function maximumLikelihoodAssociation(obj, ith_Camera, kth_Particle)
+            zNum        = length(obj.Ma{ith_Camera}); % number of measurements
+            P           = zeros(zNum, obj.n); % likelihood matrix
+            cam         = obj.particles{kth_Particle}.EKFCamera{ith_Camera};
+            
+            % calculate P(i,j): means the probalibity of i'th measurement
+            % be associated with j'th marker
+            for j = 1:obj.n
+                markerState    = obj.particles{kth_Particle}.Marker{j}.state;
+                for i = 1:zNum
+                    [angle, distance, ~]     = measureModel(markerState, cam.state, cam.Measurable_R, cam.FoV);                        
+                        
+                    if obj.isStereoVision
+                        z_hat   = [angle; distance];
+                        z       = [wrapToPi(obj.Ma{ith_Camera}(i)); obj.Mr{ith_Camera}(i)];
+                    else
+                        z_hat   = angle;
+                        z       = wrapToPi(obj.Ma{ith_Camera}(i));
+                    end
+                    H       = measureJacobian(markerState, cam.state, [angle; distance], obj.isStereoVision);
+                    Q       = H*cam.Sigma*H' + cam.M;
+                    P(i,j)  = mvnpdf(z, z_hat, (Q+Q')/2); % Possibility for getting measurement z = {range, bearing}
+                end
+            end
+            
+            % Calculate ML solution
+            P   = P ./ sum(P,2); % each row normalized to make sure it sums up to 1
+            solutionPool    = obj.associationCandidates{zNum};
+            solutionML      = [];
+            probabilityML   = 0;
+            for ith_sol = 1:size(solutionPool, 1)
+                p_ith_sol   = 1;
+                for ith_z = 1:zNum
+                    p_ith_sol   = p_ith_sol*P(ith_z, solutionPool(ith_sol, ith_z));
+                end
+                if p_ith_sol >= probabilityML
+                    probabilityML   = p_ith_sol;
+                    solutionML      = solutionPool(ith_sol, :);
+                end
+            end
+            
+            obj.Au{ith_Camera}{kth_Particle}    = zeros(zNum, obj.n);
+            for ith_z = 1:zNum
+                obj.Au{ith_Camera}{kth_Particle}(ith_z, solutionML(ith_z))  = 1;
             end
         end
         

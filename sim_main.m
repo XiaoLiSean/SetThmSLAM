@@ -13,10 +13,10 @@ enableCtrlSignal        = [true, true]; % enable pass control signal to propagat
 
 %% !!!note!!! the CtrlSignal set to true without Reconstruction would give error
 % =======================================================
-enableSetSLAM           = true;
-enableRBConstraints     = true; % [true/false] to enable rigid body constraint in set update
+enableSetSLAM           = false;
+enableRBConstraints     = false; % [true/false] to enable rigid body constraint in set update
 % =======================================================
-enableFastSLAM          = false;
+enableFastSLAM          = true;
 % =======================================================
 PV                      = ParkingValet(params, cameraType, enableCamUpdate, enableFastSLAM, enableSetSLAM, knownDataAssociation, ...
                                         enableRBConstraints, isReconstruction, enableCtrlSignal, saveHistory, saveHistoryConcise);

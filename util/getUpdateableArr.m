@@ -1,6 +1,13 @@
 %% Function to obtain arr of marker indexes which can be updated with M{i}
-function markers = getUpdateableArr(Au_i)
+function markers = getUpdateableArr(AssociationMatrices)
     markers = [];
+    
+    if iscell(AssociationMatrices)
+        Au_i        = AssociationMatrices;
+    else
+        Au_i{1}     = AssociationMatrices;
+    end
+    
     num     = length(Au_i);
     % Loop through solutions for i'th camera measurement
     if isempty(Au_i{1})

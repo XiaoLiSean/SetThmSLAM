@@ -105,7 +105,7 @@ classdef ParkingValet < matlab.mixin.Copyable
             obj.p_car           = obj.pr.p_0;
             for i = 1:obj.pr.n
                 obj.p_hat{i}    = [obj.pr.p_hat(1,i); obj.pr.p_hat(2,i)];
-                obj.markerKinematics{i}     = markerKinematics(obj.pr.Wheelbase, obj.pr.propTime, obj.p_hat{i}, obj.p_hat_rel(:,i));
+                obj.markerKinematics{i}     = markerKinematics(obj.pr.Wheelbase, obj.p_hat_rel(:,i));
             end
             for i = 1:obj.pr.m
                 obj.lxy_hat{i}  = [obj.pr.l_hat(1,i); obj.pr.l_hat(2,i)];
@@ -121,10 +121,10 @@ classdef ParkingValet < matlab.mixin.Copyable
             obj.enableCtrlSignalProp    = enableCtrlSignal;
             obj.knownDataAssociation    = knownDataAssociation;
             if enableSetSLAM
-                obj.SetSLAM             = SetThmSLAM(obj.pr, obj.isStereoVision, obj.knownDataAssociation, enableCamUpdate(1), enableRigidBodyConstraints, isReconstruction, obj.p_hat_rel);
+                obj.SetSLAM             = SetThmSLAM(obj.pr,  obj.markerKinematics, obj.isStereoVision, obj.knownDataAssociation, enableCamUpdate(1), enableRigidBodyConstraints, isReconstruction, obj.p_hat_rel);
             end
             if enableFastSLAM
-                obj.FastSLAM            = FastSLAM(obj.pr, obj.isStereoVision, enableCamUpdate(2), isReconstruction);
+                obj.FastSLAM            = FastSLAM(obj.pr, obj.markerKinematics, obj.isStereoVision, obj.knownDataAssociation, enableCamUpdate(2), isReconstruction);
             end
         end
         
@@ -160,17 +160,21 @@ classdef ParkingValet < matlab.mixin.Copyable
                 propRes     = mod(current_time, obj.pr.propTime);
                 if (propRes < epsilon || obj.pr.propTime - propRes < epsilon) && current_time ~= 0
                     obj.vehicleSim.updateKinematics(obj.pr.propTime);
-                    deltaXY     = obj.updateNominalStates(currentPose);
+                    obj.updateNominalStates(currentPose);
                     if obj.enableSetSLAM  
                         if obj.enableCtrlSignalProp(1)
-                            obj.SetSLAM.propagateSetsWithDistance(deltaXY)
+                            steeringCtrl        = wrapToPi(deg2rad(obj.vehicleSim.Vehicle.SteeringAngle));
+                            velocityCtrl        = obj.vehicleSim.Vehicle.Velocity;
+                            steeringInterval    = interval(steeringCtrl-obj.pr.e_steering, steeringCtrl+obj.pr.e_steering);
+                            velocityInterval    = interval(velocityCtrl-obj.pr.e_velocity, velocityCtrl+obj.pr.e_velocity);
+                            obj.SetSLAM.propagateSetsWithCtrl(steeringInterval, velocityInterval, obj.pr.propTime)
                         else
                             obj.SetSLAM.propagateSets();
                         end
                     end
                     if obj.enableFastSLAM
                         if obj.enableCtrlSignalProp(2)
-                            obj.FastSLAM.propagateParticlesWithDistance(deltaXY)
+                            obj.FastSLAM.propagateParticlesWithCtrl(steeringCtrl, velocityCtrl, obj.pr.propTime)
                         else
                             obj.FastSLAM.propagateParticles();
                         end
@@ -254,14 +258,14 @@ classdef ParkingValet < matlab.mixin.Copyable
                         if obj.enableCtrlSignalProp(1)
                             steeringInterval    = interval(steeringCtrl-obj.pr.e_steering, steeringCtrl+obj.pr.e_steering);
                             velocityInterval    = interval(velocityCtrl-obj.pr.e_velocity, velocityCtrl+obj.pr.e_velocity);
-                            obj.SetSLAM.propagateSetsWithCtrl(steeringInterval, velocityInterval, obj.pr.propTime, obj.markerKinematics)
+                            obj.SetSLAM.propagateSetsWithCtrl(steeringInterval, velocityInterval, obj.pr.propTime)
                         else
                             obj.SetSLAM.propagateSets();
                         end
                     end
                     if obj.enableFastSLAM
                         if obj.enableCtrlSignalProp(2)
-                            obj.FastSLAM.propagateParticlesWithDistance(deltaXY)
+                            obj.FastSLAM.propagateParticlesWithCtrl(steeringCtrl, velocityCtrl, obj.pr.propTime)
                         else
                             obj.FastSLAM.propagateParticles();
                         end

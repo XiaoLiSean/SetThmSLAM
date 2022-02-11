@@ -2,6 +2,7 @@ classdef SetThmSLAM < matlab.mixin.Copyable
     properties
         n; % number of markers
         m; % number of cameras
+        markerKinematics; % markerKinematics{i} stores function to propagate uncertainty sets
         
         %% Uncertainty sets
         updateCamera; % bool: if update the  camera uncertainty set
@@ -44,7 +45,7 @@ classdef SetThmSLAM < matlab.mixin.Copyable
     end
     
     methods
-        function obj = SetThmSLAM(pr, isStereoVision, knownDataAssociation, updateCamera, enableRigidBodyConstraints, isReconstruction, relativeNominalMarkerStates)
+        function obj = SetThmSLAM(pr, markerKinematics, isStereoVision, knownDataAssociation, updateCamera, enableRigidBodyConstraints, isReconstruction, relativeNominalMarkerStates)
             obj.n           = pr.n;
             obj.m           = pr.m;
             for i = 1:obj.n
@@ -62,6 +63,7 @@ classdef SetThmSLAM < matlab.mixin.Copyable
             if obj.isStereoVision
                 obj.e_vr    = pr.e_vr;
             end
+            obj.markerKinematics            = markerKinematics;
             obj.Measurable_R                = pr.Measurable_R;
             obj.dVFractionThreshold         = pr.dVFractionThreshold;
             obj.enableRigidBodyConstraints  = enableRigidBodyConstraints;
@@ -147,19 +149,9 @@ classdef SetThmSLAM < matlab.mixin.Copyable
         end
         
         % Set propagation by ctrl signal 
-        function propagateSetsWithCtrl(obj, alpha, v, dt, params)
+        function propagateSetsWithCtrl(obj, alpha, v, dt)
             for i = 1:obj.n 
-                param           = params{i};
-                displacement    = v*dt*sqrt((param.l_os*sin(alpha)/param.wheelbase)^2+...
-                    (cos(alpha))^2-param.l_os*sin(param.theta_os)*sin(2*alpha)/param.wheelbase);
-                interval_const  = interval(param.wheelbase*cos(param.theta_os), param.wheelbase*cos(param.theta_os));
-                angleShift      = obj.Pt + param.theta_os - pi/2 + v*dt*sin(alpha)/(2*param.wheelbase)+...
-                    intervalAtan2(interval_const, (param.wheelbase*sin(param.theta_os)-param.l_os*tan(alpha)));
-                
-                dX          = displacement*cos(angleShift);
-                dY          = displacement*sin(angleShift);
-                dXY         = zonotope(interval([dX.inf; dY.inf], [dX.sup; dY.sup]));
-                obj.P{i}    = plus(obj.P{i}, dXY);
+                obj.P{i}    = obj.markerKinematics{i}.propagateMarkerSetSLAM(obj.P{i}, alpha, v, dt, obj.Pt);
             end
             obj.updatePrevVolume();
         end
