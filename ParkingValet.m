@@ -15,6 +15,7 @@ classdef ParkingValet < matlab.mixin.Copyable
         enableSetSLAM;
         enableCtrlSignalProp;
         knownDataAssociation;
+        nominalVehicleBody;
         
         %% Measurement information
         isStereoVision;
@@ -120,6 +121,7 @@ classdef ParkingValet < matlab.mixin.Copyable
             obj.enableFastSLAM          = enableFastSLAM;
             obj.enableCtrlSignalProp    = enableCtrlSignal;
             obj.knownDataAssociation    = knownDataAssociation;
+            obj.nominalVehicleBody      = mptPolytope(obj.pr.p_hat');
             if enableSetSLAM
                 obj.SetSLAM             = SetThmSLAM(obj.pr,  obj.markerKinematics, obj.isStereoVision, obj.knownDataAssociation, enableCamUpdate(1), enableRigidBodyConstraints, isReconstruction, obj.p_hat_rel);
             end
@@ -422,12 +424,15 @@ classdef ParkingValet < matlab.mixin.Copyable
         function deltaXY = updateNominalStates(obj, p_car)
             obj.p_car   = [p_car(1); p_car(2); deg2rad(p_car(3))];
             deltaXY     = cell(1, obj.pr.n);
+            vertices    = [];
             for i = 1:obj.pr.n
                 x_marker_i      = obj.p_car(1) + obj.p_hat_rel(1,i)*cos(obj.p_car(3)) - obj.p_hat_rel(2,i)*sin(obj.p_car(3));
                 y_marker_i      = obj.p_car(2) + obj.p_hat_rel(1,i)*sin(obj.p_car(3)) + obj.p_hat_rel(2,i)*cos(obj.p_car(3));
                 deltaXY{i}      = [x_marker_i; y_marker_i] - obj.p_hat{i};
                 obj.p_hat{i}    = [x_marker_i; y_marker_i];
+                vertices        = [vertices; x_marker_i, y_marker_i];
             end
+            obj.nominalVehicleBody  = mptPolytope(vertices);
         end
         
         %% update reconstructed states: CoM of rigid body skeleton and vehicle heading
@@ -616,22 +621,25 @@ classdef ParkingValet < matlab.mixin.Copyable
             template.p_car  = obj.p_car;
             template.pxy    = obj.pxy;
             template.pt     = obj.pt;
-            template.steeringCtrl   = wrapToPi(deg2rad(obj.vehicleSim.Vehicle.SteeringAngle));
-            template.velocityCtrl   = obj.vehicleSim.Vehicle.Velocity;
+            template.steeringCtrl           = wrapToPi(deg2rad(obj.vehicleSim.Vehicle.SteeringAngle));
+            template.velocityCtrl           = obj.vehicleSim.Vehicle.Velocity;
+            template.nominalVehicleBody     = obj.nominalVehicleBody;
             if obj.enableSetSLAM
                 template.SetSLAM.Lxy    = obj.SetSLAM.Lxy;
                 template.SetSLAM.Lt     = obj.SetSLAM.Lt;
                 template.SetSLAM.P      = obj.SetSLAM.P;
                 template.SetSLAM.Pxy    = obj.SetSLAM.Pxy;
                 template.SetSLAM.Pt     = obj.SetSLAM.Pt;
+                template.SetSLAM.isIn   = obj.isFastSLAMGuaranteed;
+                template.SetSLAM.PxyOr  = volume(and(obj.SetSLAM.Pxy, obj.nominalVehicleBody));
             end
             if obj.enableFastSLAM
-                template.SetSLAM.isIn   = obj.isSetSLAMGuaranteed;
                 template.FastSLAM.mu    = obj.FastSLAM.mu;
                 template.FastSLAM.Sigma = obj.FastSLAM.Sigma;
                 template.FastSLAM.Pxy   = obj.FastSLAM.Pxy;
                 template.FastSLAM.Pt    = obj.FastSLAM.Pt;
                 template.FastSLAM.isIn  = obj.isFastSLAMGuaranteed;
+                template.FastSLAM.PxyOr = volume(and(obj.FastSLAM.Pxy, obj.nominalVehicleBody));
             end
             obj.History{time_step}  = template;
         end
@@ -645,11 +653,13 @@ classdef ParkingValet < matlab.mixin.Copyable
                 template.SetSLAM.Pxy    = volume(obj.SetSLAM.Pxy);
                 template.SetSLAM.Pt     = volume(obj.SetSLAM.Pt);
                 template.SetSLAM.isIn   = obj.isSetSLAMGuaranteed;
+                template.SetSLAM.PxyOr  = volume(and(obj.SetSLAM.Pxy, obj.nominalVehicleBody));
             end
             if obj.enableFastSLAM
                 template.FastSLAM.Pxy   = volume(obj.FastSLAM.Pxy);
                 template.FastSLAM.Pt    = volume(obj.FastSLAM.Pt);
                 template.FastSLAM.isIn  = obj.isFastSLAMGuaranteed;
+                template.FastSLAM.PxyOr = volume(and(obj.FastSLAM.Pxy, obj.nominalVehicleBody));
             end
             obj.History{time_step}  = template;
         end

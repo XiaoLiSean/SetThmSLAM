@@ -194,7 +194,7 @@
             end
             
             % Calculate ML solution
-            P   = P ./ sum(P,2); % each row normalized to make sure it sums up to 1
+            % P   = P ./ sum(P,2); % each row normalized to make sure it sums up to 1
             solutionPool    = obj.associationCandidates{zNum};
             solutionML      = [];
             probabilityML   = 0;

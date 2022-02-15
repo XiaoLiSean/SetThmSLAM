@@ -4,17 +4,17 @@ close all;
 %% Initialize Parking Space and Visualization
 cameraType              = 'stereo'; % ['mono'/'stereo']
 knownDataAssociation    = false; % if the measurement to marker associations are known
-saveHistory             = false; % if save the simulation history
-saveHistoryConcise      = false & saveHistory; % disable save full history of the simulation
-usePrevTrajectory       = true; % use previous stored path
+saveHistory             = true; % if save the simulation history
+saveHistoryConcise      = true & saveHistory; % disable save full history of the simulation
+usePrevTrajectory       = false; % use previous stored path
 isReconstruction        = true; % reconstruction and plot the defined vehicle state instead of the markers
 enableCamUpdate         = [false, true]; % enable update camera set/particle
 enableCtrlSignal        = [true, true]; % enable pass control signal to propagate sets/particles
 
 %% !!!note!!! the CtrlSignal set to true without Reconstruction would give error
 % =======================================================
-enableSetSLAM           = false;
-enableRBConstraints     = false; % [true/false] to enable rigid body constraint in set update
+enableSetSLAM           = true;
+enableRBConstraints     = true; % [true/false] to enable rigid body constraint in set update
 % =======================================================
 enableFastSLAM          = true;
 % =======================================================
@@ -34,8 +34,8 @@ saveSimHistory(PV, cameraType, usePrevTrajectory)
 function saveSimHistory(PV, cameraType, usePrevTrajectory)
     if usePrevTrajectory
         filename    = "graphData/snapshot_" + cameraType + "_eva_" + num2str(PV.pr.e_va) + "_evr_" + num2str(PV.pr.e_vr) + ...
-                        "_ew_" + num2str(PV.pr.e_w(1)) + "_Lt0_" + num2str(PV.pr.epsilon_Lt) + ...
-                        "_Lxy0_" + num2str(PV.pr.epsilon_Lxy) + "_P0_" + num2str(PV.pr.epsilon_P) + '.mat';
+                        "_eSteering_" + num2str(PV.pr.e_steering) + "_eVelocity_" + num2str(PV.pr.e_velocity) + ...
+                        "_Lt0_" + num2str(PV.pr.epsilon_Lt) + "_Lxy0_" + num2str(PV.pr.epsilon_Lxy) + "_P0_" + num2str(PV.pr.epsilon_P) + '.mat';
     else
         filename    = 'Path.mat';
     end

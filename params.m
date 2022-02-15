@@ -22,15 +22,15 @@ classdef params < matlab.mixin.Copyable
                    0, 32, -55*pi/180; 10, 32, -7*pi/18; 22.5, 32, -pi/2; 35, 32, -11*pi/18; 45, 32, -125*pi/180;
                    15, 20, pi/2; 22.5, 20, pi/2; 30, 20, pi/2; -2, 10, 0; -2, 20, 0; 13, 15, -pi]'; % Camera Nominal State [x (m);y (m);theta (rad)]  
         Measurable_R    = 20; % Markers within Measurable_R are measurable
-        e_va            = deg2rad(5); % angle measurement noise bound in rad
+        e_va            = deg2rad(1); % angle measurement noise bound in rad
         e_vr            = 0.1; % range measurement noise bound in meter
         
         %% Simulation time sychronization and management
-        simLoopDt   = 0.01; % [sec] time step of each simulation loop (other time constant should be interger times of this)
-        propTime    = 0.01; % [sec] [0.01 default] dt of adjacent set propagation (k --> k+1) during kinametics update (should be the smallest among the four)
-        sampleTime  = 0.05; % [sec] [0.05 default] pi longitudinal controller sample time for the integral
-        updateTime  = 0.5; % [sec] dt of adjacent measurement set update (k --> k+1)
-        plotTime    = 1; % [sec] [n*updateTime, n is interger] time interval to update plot
+        simLoopDt   = 1; % [sec] [0.01 default] time step of each simulation loop (other time constant should be interger times of this)
+        propTime    = 1; % [sec] [0.01 default] dt of adjacent set propagation (k --> k+1) during kinametics update (should be the smallest among the four)
+        sampleTime  = 1; % [sec] [0.05 default] pi longitudinal controller sample time for the integral
+        updateTime  = 1; % [sec] [0.5 default] dt of adjacent measurement set update (k --> k+1)
+        plotTime    = 1; % [sec] [0.5 default] [n*updateTime, n is interger] time interval to update plot
         
         %% Ego RC car parameters (refer to vehicleDimensions in MATLAB Doc.)
         carLength   = 4.0; % car length in meters
@@ -52,7 +52,7 @@ classdef params < matlab.mixin.Copyable
         approxSeparation    = 0.1; % Specify number of poses to return using a separation of approximately 0.1 m
         
         %% Constant used in initializing and Update Uncertainty Set
-        epsilon_Lt  = deg2rad(5); % in rad
+        epsilon_Lt  = deg2rad(1); % in rad
         epsilon_Lxy = 0.1; % in meter
         epsilon_P   = 0.5; % in meter
         epsilon_rb  = 0.00; % rigid body uncertainty in [meter]
@@ -134,15 +134,17 @@ classdef params < matlab.mixin.Copyable
             % =============================================================
             % Variables for setting up particle filter
             % =============================================================
-            obj.particle_num    = 150;
+            obj.particle_num    = 100;
         end
         
-        function resetParams(obj, e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P)
+        function resetParams(obj, e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P, e_steering, e_velocity)
             obj.e_va        = e_va;
             obj.e_vr        = e_vr;
             obj.epsilon_Lt  = epsilon_Lt;
             obj.epsilon_Lxy = epsilon_Lxy;
-            obj.epsilon_P   = epsilon_P;            
+            obj.epsilon_P   = epsilon_P;    
+            obj.e_steering  = e_steering;
+            obj.e_velocity  = e_velocity;
             % =============================================================
             % Re-initialize uncertainty sets
             % =============================================================
