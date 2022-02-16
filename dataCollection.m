@@ -20,12 +20,12 @@ cameraTypes     = ["mono", "stereo"];
 parameters      = params;
 num             = 25;
 e_vas           = deg2rad(linspace(0.1, 10, num));
-e_vrs           = linspace(0.01, 0.5, num);
+e_vrs           = linspace(0.1, 0.5, num);
 epsilon_Lts     = deg2rad(linspace(0.1, 10, num));
-epsilon_Lxys    = linspace(0.01, 0.5, num);
+epsilon_Lxys    = linspace(0.1, 0.5, num);
 epsilon_Ps      = linspace(0.1, 5, num);  
 e_steering      = deg2rad(linspace(0, 10, num));
-e_velocity      = linspace(0, 2, num);  
+e_velocity      = linspace(0, 5, num);  
 e_mesh          = {e_vas, e_vrs, epsilon_Lts, epsilon_Lxys, epsilon_Ps, e_steering, e_velocity};  
 
 %% Simulation Main

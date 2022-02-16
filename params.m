@@ -26,11 +26,11 @@ classdef params < matlab.mixin.Copyable
         e_vr            = 0.1; % range measurement noise bound in meter
         
         %% Simulation time sychronization and management
-        simLoopDt   = 1; % [sec] [0.01 default] time step of each simulation loop (other time constant should be interger times of this)
-        propTime    = 1; % [sec] [0.01 default] dt of adjacent set propagation (k --> k+1) during kinametics update (should be the smallest among the four)
-        sampleTime  = 1; % [sec] [0.05 default] pi longitudinal controller sample time for the integral
-        updateTime  = 1; % [sec] [0.5 default] dt of adjacent measurement set update (k --> k+1)
-        plotTime    = 1; % [sec] [0.5 default] [n*updateTime, n is interger] time interval to update plot
+        simLoopDt   = 0.01; % [sec] [0.01 default] time step of each simulation loop (other time constant should be interger times of this)
+        propTime    = 0.01; % [sec] [0.01 default] dt of adjacent set propagation (k --> k+1) during kinametics update (should be the smallest among the four)
+        sampleTime  = 0.05; % [sec] [0.05 default] pi longitudinal controller sample time for the integral
+        updateTime  = 0.5; % [sec] [0.5 default] dt of adjacent measurement set update (k --> k+1)
+        plotTime    = 0.5; % [sec] [0.5 default] [n*updateTime, n is interger] time interval to update plot
         
         %% Ego RC car parameters (refer to vehicleDimensions in MATLAB Doc.)
         carLength   = 4.0; % car length in meters
@@ -41,7 +41,7 @@ classdef params < matlab.mixin.Copyable
         p_0             = [10; 5; 0]; % RC car initial state vector [x,y,theta(deg)] defined at the center of rear wheel axis
         maxSteeringAngle    = 35; % in degrees
         maxSpeed            = 5; % Maximum speed at the parking lot (m/sec)
-        safetyIndex         = 1.5; % ensure safe propagation given the maxSpeed can be wrong
+        safetyIndex         = 1.5; % ensure safe propagation given the numerical error and maxSpeed can be wrong
         e_steering          = deg2rad(0.5); % noise of steering control signal in [rad]
         e_velocity          = 0.5; % noise of velocity control signal in [m/s] 
         

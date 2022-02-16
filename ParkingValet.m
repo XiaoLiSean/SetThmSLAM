@@ -162,7 +162,7 @@ classdef ParkingValet < matlab.mixin.Copyable
                 propRes     = mod(current_time, obj.pr.propTime);
                 if (propRes < epsilon || obj.pr.propTime - propRes < epsilon) && current_time ~= 0
                     obj.vehicleSim.updateKinematics(obj.pr.propTime);
-                    obj.updateNominalStates(currentPose);
+                    obj.updateNominalStates(obj.vehicleSim.getVehiclePose());
                     if obj.enableSetSLAM  
                         if obj.enableCtrlSignalProp(1)
                             steeringCtrl        = wrapToPi(deg2rad(obj.vehicleSim.Vehicle.SteeringAngle));
