@@ -28,6 +28,7 @@
         isReconstruction; % reconstruction and plot the defined vehicle state instead of the markers
         Pxy; % pxy \in Pxy
         Pt; % pt \in Pt
+        VP; % volumn of P{i}
     end
     
     methods
@@ -290,6 +291,11 @@
                     points(:,(i-1)*obj.s+k) = obj.particles{k}.Marker{i}.state;
                 end
                 P{i}.P.V    = points(:,((i-1)*obj.s+1):i*obj.s)';
+                if length(unique(P{i}.P.V,'first','rows')) <=2
+                    obj.VP{i}   = 0;
+                else
+                    obj.VP{i}   = volume(mptPolytope.enclosePoints(P{i}.P.V'));
+                end
             end
             obj.Pxy     = mptPolytope.enclosePoints(points);
             [betaInf, betaSup]  = atan2OverConvPolygons(P{2}, P{1});

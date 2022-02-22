@@ -649,17 +649,31 @@ classdef ParkingValet < matlab.mixin.Copyable
             if time_step == 1
                 template.pr         = copy(obj.pr);
             end
+            dxy                 = obj.p_hat{2} - obj.p_hat{1};
+            template.theta_car  = atan2(dxy(2),dxy(1)); 
             if obj.enableSetSLAM
                 template.SetSLAM.Pxy    = volume(obj.SetSLAM.Pxy);
                 template.SetSLAM.Pt     = volume(obj.SetSLAM.Pt);
                 template.SetSLAM.isIn   = obj.isSetSLAMGuaranteed;
                 template.SetSLAM.PxyOr  = volume(and(obj.SetSLAM.Pxy, obj.nominalVehicleBody));
+                template.SetSLAM.P      = zeros(4,1);
+                for i = 1:obj.pr.n
+                    template.SetSLAM.P(i,1)     = volume(obj.SetSLAM.P{i});
+                end
+                template.SetSLAM.PtInf  = obj.SetSLAM.Pt.inf;
+                template.SetSLAM.PtSup  = obj.SetSLAM.Pt.sup;
             end
             if obj.enableFastSLAM
                 template.FastSLAM.Pxy   = volume(obj.FastSLAM.Pxy);
                 template.FastSLAM.Pt    = volume(obj.FastSLAM.Pt);
                 template.FastSLAM.isIn  = obj.isFastSLAMGuaranteed;
                 template.FastSLAM.PxyOr = volume(and(obj.FastSLAM.Pxy, obj.nominalVehicleBody));
+                template.FastSLAM.P     = zeros(4,1);
+                for i = 1:obj.pr.n
+                    template.FastSLAM.P(i,1)    = obj.FastSLAM.VP{i};
+                end
+                template.FastSLAM.PtInf = obj.FastSLAM.Pt.inf;
+                template.FastSLAM.PtSup = obj.FastSLAM.Pt.sup;
             end
             obj.History{time_step}  = template;
         end

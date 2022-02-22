@@ -4,7 +4,7 @@ addpath('..')
 addpath('../util')
 addpath('../set operation')
 addpath('../filtering')
-%Historys  	= load('snapshot_stereo_eva_0.087266_evr_0.1_ew_0.075_Lt0_0.087266_Lxy0_0.1_P0_0.5.mat').Historys;
+Historys  	= load('snapshot_stereo_eva_0.087266_evr_0.1_ew_0.075_Lt0_0.087266_Lxy0_0.1_P0_0.5.mat').Historys;
 
 figure(1)
 pr      = params;
@@ -16,10 +16,10 @@ idx         = idxs(snapshoot_i) - mod(idxs(snapshoot_i), round(Historys{1}.pr.up
 % Plot Vehicle Body
 carPose     = Historys{idx}.p_car;
 carPose(3)  = rad2deg(Historys{idx}.p_car(3));      
-helperPlotVehicle(carPose', pr.carDims, 0, 'Color', 'blue', 'DisplayName', 'robot body $\hat{P}_{xy}$'); hold on;
+helperPlotVehicle(carPose', pr.carDims, 0, 'Color', 'blue', 'DisplayName', 'vehicle body $\hat{P}_{xy}$'); hold on;
 h1  = plot([Historys{idx}.pxy(1), Historys{idx}.pxy(1)+r*cos(Historys{idx}.pt)],...
         [Historys{idx}.pxy(2), Historys{idx}.pxy(2)+r*sin(Historys{idx}.pt)], 'r--', 'LineWidth', 3);
-set(h1,{'DisplayName'},{'robot orientation $\hat{p}_{\theta}$'})
+set(h1,{'DisplayName'},{'vehicle orientation $\hat{p}_{\theta}$'})
 % Plot Reconstructed Sets in SetSLAM
 t1  = Historys{idx}.SetSLAM.Pt.inf;
 t2  = Historys{idx}.SetSLAM.Pt.sup;

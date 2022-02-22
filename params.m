@@ -43,7 +43,7 @@ classdef params < matlab.mixin.Copyable
         maxSpeed            = 5; % Maximum speed at the parking lot (m/sec)
         safetyIndex         = 1.5; % ensure safe propagation given the numerical error and maxSpeed can be wrong
         e_steering          = deg2rad(0.5); % noise of steering control signal in [rad]
-        e_velocity          = 0.5; % noise of velocity control signal in [m/s] 
+        e_velocity          = 0.1; % noise of velocity control signal in [m/s] 
         
         %% Error bound in RC car control signal (alpha, a)
 
@@ -53,7 +53,7 @@ classdef params < matlab.mixin.Copyable
         
         %% Constant used in initializing and Update Uncertainty Set
         epsilon_Lt  = deg2rad(1); % in rad
-        epsilon_Lxy = 0.1; % in meter
+        epsilon_Lxy = 0.05; % in meter
         epsilon_P   = 0.5; % in meter
         epsilon_rb  = 0.00; % rigid body uncertainty in [meter]
         dVFractionThreshold     = 0.01; % used to determine the termination of set update
