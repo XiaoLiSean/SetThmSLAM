@@ -11,22 +11,23 @@ parameters      = params;
 cameraTypes     = ["mono", "stereo"];
 num             = 25;
 e_vas           = deg2rad(linspace(0.1, 10, num));
-e_vrs           = linspace(0.01, 0.5, num);
-epsilon_Ps      = linspace(0.1, 5, num);
+e_vrs           = linspace(0.1, 0.5, num);
 epsilon_Lts     = deg2rad(linspace(0.1, 10, num));
-epsilon_Lxys    = linspace(0.01, 0.5, num);
-e_mesh          = {e_vas, e_vrs, epsilon_Ps, epsilon_Lts, epsilon_Lxys};
+epsilon_Lxys    = linspace(0.1, 0.5, num);
+epsilon_Ps      = linspace(0.1, 5, num);  
+e_steering      = deg2rad(linspace(0, 10, num));
+e_velocity      = linspace(0, 5, num);  
+e_mesh          = {e_vas, e_vrs, epsilon_Ps, epsilon_Lts, epsilon_Lxys, e_velocity, e_steering};
 
 %% Derived parameter
-yTickLabels     = {rad2deg(e_vas), e_vrs, epsilon_Ps.^2.*4, rad2deg(epsilon_Lts).*2, epsilon_Lxys.^2.*4};
+yTickLabels     = {rad2deg(e_vas), e_vrs, epsilon_Ps.^2.*4, rad2deg(epsilon_Lts).*2, epsilon_Lxys.^2.*4, e_velocity, rad2deg(e_steering)};
 vehicleVolume   = parameters.carLength*parameters.carWidth;
 timeSteps       = getTimeSteps();
-xoffset         = parameters.simLoopDt * timeSteps * 2;
-initialDT       = 100; % timesteps used in initialization
+initialDT       = parameters.updateTime/parameters.propTime; % timesteps used in initialization
+updateRuns      = floor(timeSteps/initialDT);
 labels          = ["$\epsilon^{v_a}$ [deg]", "$\epsilon^{v_r}$ [m]",...
-                    "$V(P_{i}(k=0))$ [$m^2$]",...
-                    "$V(L_{i,\theta}(k=0))$ [deg]",...
-                    "$V(L_{i,xy}(k=0))$ [$m^2$]"];
+                    "$V(P_{i}(k=0))$ [$m^2$]", "$V(L_{i,\theta}(k=0))$ [deg]",...
+                    "$V(L_{i,xy}(k=0))$ [$m^2$]", "$\epsilon^{u_1}$ [m/s]",  "$\epsilon^{u_2}$ [deg]"];
 fontSize        = 20; 
 alpha1          = 0.25;
 alpha2          = 0.12;
@@ -38,10 +39,10 @@ set(gcf,'Position',[0 0 1000 400])
 for i_cam = 1:length(cameraTypes)
     camType         = cameraTypes(i_cam);
     for k = 1:2
-        pr      = {e_vas(1), e_vrs(1), epsilon_Ps(1), epsilon_Lts(1), epsilon_Lxys(1)};
+        pr      = {e_vas(1), e_vrs(1), epsilon_Ps(1), epsilon_Lts(1), epsilon_Lxys(1), e_velocity(1), e_steering(1)};
         x       = e_mesh{k};
-        yFast   = zeros(num, timeSteps-initialDT);
-        ySet   = zeros(num, timeSteps-initialDT);
+        yFast   = zeros(num, updateRuns);
+        ySet    = zeros(num, updateRuns);
         if k == 2 && strcmp(camType,'mono')
             leg = legend([h1S, h2S, h3S, h1F, h2F, h3F],{'mean (Ours)', 'std (Ours)', 'Max/Min (Ours)', 'mean (FastSLAM)', 'std (FastSLAM)', 'Max/Min (FastSLAM)'},...
                 'Interpreter','latex', 'NumColumns', 2, 'FontSize', fontSize*0.7, 'Position', [0.1, 0.2, 0.4,0.2]);
@@ -50,14 +51,14 @@ for i_cam = 1:length(cameraTypes)
         subplot(2, 2, 2*(k-1)+i_cam);
         for i = 1:num
             pr{k}   = e_mesh{k}(i);
-            [e_va, e_vr, epsilon_P, epsilon_Lt, epsilon_Lxy]    = deal(pr{:});
+            [e_va, e_vr, epsilon_P, epsilon_Lt, epsilon_Lxy, e_velocity, e_steering]    = deal(pr{:});
             if strcmp(camType,'mono')
-                filename =  getFileName(camType, 0.075, e_va, 0.01, epsilon_Lt, epsilon_Lxy, epsilon_P);
+                filename =  getFileName(camType, e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P, e_steering, e_velocity);
             else
-                filename =  getFileName(camType, 0.075, e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P);
+                filename =  getFileName(camType, e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P, e_steering, e_velocity);
             end
             data    = load(filename).Historys;
-            History = cellHistory2Arr(data, initialDT);
+            History = sparseCellHistory2Arr(data, initialDT);
             ySet(i,:)   = History.SetSLAM.Pxy/vehicleVolume;
             yFast(i,:)  = History.FastSLAM.Pxy/vehicleVolume;
         end
@@ -165,31 +166,37 @@ annotation('arrow', [0.6,0.6],[0.62, 0.82],'Color','red')
 saveas(gcf,'pxyVersusParamsB','epsc')
 
 %% Support functions
-function filename = getFileName(cameraType, e_w, e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P)
-    filename    = cameraType + "_eva_" + num2str(e_va) + "_evr_" + num2str(e_vr) + ...
-                "_ew_" + num2str(e_w(1)) + "_Lt0_" + num2str(epsilon_Lt) + ...
-                "_Lxy0_" + num2str(epsilon_Lxy) + "_P0_" + num2str(epsilon_P) + '.mat';
+function filename = getFileName(cameraType, e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P, e_steering, e_velocity)
+    filename    = "sensitivity/" + cameraType + "_eva_" + num2str(e_va) + "_evr_" + num2str(e_vr) + ...
+                    "_eSteering_" + num2str(e_steering) + "_eVelocity_" + num2str(e_velocity) + ...
+                    "_Lt0_" + num2str(epsilon_Lt) + "_Lxy0_" + num2str(epsilon_Lxy) + "_P0_" + num2str(epsilon_P) + '.mat';
 end
 
-function History = cellHistory2Arr(data, initialDT)
-    % remove the initialization timestep
-    History.SetSLAM.Pxy     = zeros(1, length(data)-initialDT);
-    History.SetSLAM.Pt      = zeros(1, length(data)-initialDT);
-    History.SetSLAM.isIn    = zeros(1, length(data)-initialDT);
-    History.FastSLAM.Pxy    = zeros(1, length(data)-initialDT);
-    History.FastSLAM.Pt     = zeros(1, length(data)-initialDT);
-    History.FastSLAM.isIn   = zeros(1, length(data)-initialDT);
-    for i = 1:length(data)-initialDT % remove the initialization timestep
-        History.SetSLAM.Pxy(i)      = data{i+initialDT}.SetSLAM.Pxy;
-        History.SetSLAM.Pt(i)       = data{i+initialDT}.SetSLAM.Pt;
-        History.SetSLAM.isIn(i)     = data{i+initialDT}.SetSLAM.isIn;
-        History.FastSLAM.Pxy(i)     = data{i+initialDT}.FastSLAM.Pxy;
-        History.FastSLAM.Pt(i)      = data{i+initialDT}.FastSLAM.Pt;
-        History.FastSLAM.isIn(i)    = data{i+initialDT}.FastSLAM.isIn;
+function History = sparseCellHistory2Arr(data, initialDT)
+    % remove the initialization timestep    
+    History.SetSLAM.Pxy     = zeros(1, floor(length(data)/initialDT));
+    History.SetSLAM.Pt      = zeros(1, floor(length(data)/initialDT));
+    History.SetSLAM.isIn    = zeros(1, floor(length(data)/initialDT));
+    History.SetSLAM.PxyOr   = zeros(1, floor(length(data)/initialDT));
+    
+    History.FastSLAM.Pxy    = zeros(1, floor(length(data)/initialDT));
+    History.FastSLAM.Pt     = zeros(1, floor(length(data)/initialDT));
+    History.FastSLAM.isIn   = zeros(1, floor(length(data)/initialDT));
+    History.FastSLAM.PxyOr  = zeros(1, floor(length(data)/initialDT));
+    for i = 1:floor(length(data)/initialDT) % remove the initialization timestep        
+        History.SetSLAM.Pxy(i)      = data{i*initialDT+1}.SetSLAM.Pxy;
+        History.SetSLAM.Pt(i)       = data{i*initialDT+1}.SetSLAM.Pt;
+        History.SetSLAM.isIn(i)     = data{i*initialDT+1}.SetSLAM.isIn;
+        History.SetSLAM.PxyOr(i)    = data{i*initialDT+1}.SetSLAM.PxyOr;
+        
+        History.FastSLAM.Pxy(i)     = data{i*initialDT+1}.FastSLAM.Pxy;
+        History.FastSLAM.Pt(i)      = data{i*initialDT+1}.FastSLAM.Pt;
+        History.FastSLAM.isIn(i)    = data{i*initialDT+1}.FastSLAM.isIn;
+        History.FastSLAM.PxyOr(i)   = data{i*initialDT+1}.FastSLAM.PxyOr;
     end
 end
 
 function timeSteps = getTimeSteps()
-    data    = load('stereo_eva_0.13134_evr_0.01_ew_0.075_Lt0_0.0017453_Lxy0_0.01_P0_0.1.mat').Historys;
+    data    = load('../Path.mat').Historys;
     timeSteps   = length(data);
 end

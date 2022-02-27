@@ -649,8 +649,7 @@ classdef ParkingValet < matlab.mixin.Copyable
             if time_step == 1
                 template.pr         = copy(obj.pr);
             end
-            dxy                 = obj.p_hat{2} - obj.p_hat{1};
-            template.theta_car  = atan2(dxy(2),dxy(1)); 
+            template.theta_car      = obj.p_car(3); 
             if obj.enableSetSLAM
                 template.SetSLAM.Pxy    = volume(obj.SetSLAM.Pxy);
                 template.SetSLAM.Pt     = volume(obj.SetSLAM.Pt);

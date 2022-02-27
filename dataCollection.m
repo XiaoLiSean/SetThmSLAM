@@ -1,6 +1,3 @@
-clear all; clc;
-close all;
-
 %% Initialize Parking Space and Visualization
 knownDataAssociation    = false; % if the measurement to marker associations are known
 saveHistory             = true; % if save the simulation history
@@ -13,7 +10,7 @@ enableCtrlSignal        = [true, true]; % enable pass control signal to propagat
 enableSetSLAM           = true;
 enableRBConstraints     = true; % [true/false] to enable rigid body constraint in set update
 % =======================================================
-enableFastSLAM          = false;
+enableFastSLAM          = true;
 % =======================================================
 %% Change Parameters
 cameraTypes     = ["mono", "stereo"];
@@ -24,24 +21,21 @@ e_vrs           = linspace(0.1, 0.5, num);
 epsilon_Lts     = deg2rad(linspace(0.1, 10, num));
 epsilon_Lxys    = linspace(0.1, 0.5, num);
 epsilon_Ps      = linspace(0.1, 5, num);  
-e_steering      = deg2rad(linspace(0, 10, num));
-e_velocity      = linspace(0, 5, num);  
-e_mesh          = {e_vas, e_vrs, epsilon_Lts, epsilon_Lxys, epsilon_Ps, e_steering, e_velocity};  
+e_steerings     = deg2rad(linspace(0.1, 10, num));
+e_velocitys     = linspace(0.05, 5, num);  
+e_mesh          = {e_vas, e_vrs, epsilon_Lts, epsilon_Lxys, epsilon_Ps, e_steerings, e_velocitys};  
 
 %% Simulation Main
 History     = load('Path.mat').Historys;
 parameters.plotTime     = inf; % disable the graph update
-for cameraType = cameraTypes
 for k = 1:length(e_mesh)
+for cameraType = cameraTypes
     if k == 2 && strcmp(cameraType,'mono') 
         continue
     end
     % =====================================================================
-    pr      = {e_vas(1), e_vrs(1), epsilon_Lts(1), epsilon_Lxys(1), epsilon_Ps(1), e_steering(1), e_velocity(1)};
+    pr      = {e_vas(1), e_vrs(1), epsilon_Lts(1), epsilon_Lxys(1), epsilon_Ps(1), e_steerings(1), e_velocitys(1)};
     for i = 1:num
-        if k ~= 1 && i == 1
-            continue
-        end
         pr{k}   = e_mesh{k}(i);
         [e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P, e_steering, e_velocity]    = deal(pr{:});
         if exist(getFileName(cameraType, e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P, e_steering, e_velocity), 'file') == 2
@@ -58,6 +52,7 @@ for k = 1:length(e_mesh)
     end
 end
 end
+dataCollectionFinished  = true;
 
 %% Support Function
 function saveSimulationHistory(PV, cameraType, e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P, e_steering, e_velocity)
