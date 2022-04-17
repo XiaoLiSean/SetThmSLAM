@@ -4,7 +4,7 @@ close all;
 %% Initialize Parking Space and Visualization
 cameraType              = 'stereo'; % ['mono'/'stereo']
 knownDataAssociation    = false; % if the measurement to marker associations are known
-saveHistory             = true; % if save the simulation history
+saveHistory             = false; % if save the simulation history
 saveHistoryConcise      = true & saveHistory; % disable save full history of the simulation
 usePrevTrajectory       = true; % use previous stored path
 isReconstruction        = true; % reconstruction and plot the defined vehicle state instead of the markers

@@ -4,6 +4,7 @@ addpath('..')
 addpath('../util')
 addpath('../set operation')
 addpath('../filtering')
+folder  = "sensitivityUnknown";
 
 % Pxy Ptheta Volume versus time
 %% Change Parameters
@@ -26,8 +27,8 @@ timeSteps       = getTimeSteps();
 initialDT       = parameters.updateTime/parameters.propTime; % timesteps used in initialization
 updateRuns      = floor(timeSteps/initialDT);
 titles          = {'Monocular Camera', 'Stereo Camera'};
-labels          = ["$V(P_{i}(k=0))$ [$m^2$]", "(sup $L_{i,\theta}$ - inf $L_{i,\theta})(k=0)$ [deg]", "$V(L_{i,xy}(k=0))$ [$m^2$]"];
-filenames       = ["sensitivityPi", "sensitivityLt", "sensitivityLxy"];
+labels          = ["$V(P_{i}(k=0))$ [$m^2$]", "(max $L_{i,\theta}$ - min $L_{i,\theta})(k=0)$ [deg]", "$V(L_{i,xy}(k=0))$ [$m^2$]"];
+filenames       = [folder+"Pi", folder+"Lt", folder+"Lxy"];
 fontSize        = 20; 
 alpha1          = 0.25;
 alpha2          = 0.12;
@@ -50,7 +51,7 @@ for i_cam = 1:length(cameraTypes)
     for i = 1:num
         pr{k}       = e_mesh{k}(i);
         [e_va, e_vr, epsilon_P, epsilon_Lt, epsilon_Lxy, e_velocity, e_steering]    = deal(pr{:});
-        filename    =  getFileName(camType, e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P, e_steering, e_velocity);
+        filename    =  getFileName(folder, camType, e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P, e_steering, e_velocity);
         data        = load(filename).Historys;
         History     = sparseCellHistory2Arr(data, initialDT);
 
@@ -106,7 +107,7 @@ for i_cam = 1:length(cameraTypes)
     ytickangle(90);
     xlabel(labels(k-2), 'Interpreter', 'latex', 'FontSize', fontSize); 
     if i_cam == 1      
-        ylabel({'$|sup P_{\theta}-\hat{p}_{\theta}|$', '$+|inf P_{\theta}-\hat{p}_{\theta}|$', '[deg]'}, 'Interpreter','latex', 'FontSize', fontSize);
+        ylabel({'$|max P_{\theta}-\hat{p}_{\theta}|$', '$+|min P_{\theta}-\hat{p}_{\theta}|$', '[deg]'}, 'Interpreter','latex', 'FontSize', fontSize);
     end
 end
 saveas(gcf,filenames(k-2),'epsc')
@@ -141,8 +142,8 @@ function dmin = getMinDistance(t1, t2)
     dmin    = min([d1,d2,d3,d4]);
 end
 
-function filename = getFileName(cameraType, e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P, e_steering, e_velocity)
-    filename    = "sensitivity/" + cameraType + "_eva_" + num2str(e_va) + "_evr_" + num2str(e_vr) + ...
+function filename = getFileName(folder, cameraType, e_va, e_vr, epsilon_Lt, epsilon_Lxy, epsilon_P, e_steering, e_velocity)
+    filename    = folder + "/" + cameraType + "_eva_" + num2str(e_va) + "_evr_" + num2str(e_vr) + ...
                     "_eSteering_" + num2str(e_steering) + "_eVelocity_" + num2str(e_velocity) + ...
                     "_Lt0_" + num2str(epsilon_Lt) + "_Lxy0_" + num2str(epsilon_Lxy) + "_P0_" + num2str(epsilon_P) + '.mat';
 end

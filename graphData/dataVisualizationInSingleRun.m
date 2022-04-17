@@ -220,12 +220,12 @@ title(titles{2}, 'Interpreter', 'latex', 'FontSize', fontSize);
 xlabel('Time Steps', 'Interpreter', 'latex', 'FontSize', fontSize);
 subplot(4,1,4);
 set(gca,'visible','off')
-legend([hSet1, hFast1, hpt],{'[inf$P_{\theta}$-$\hat{p}_{\theta}$, sup$P_{\theta}$-$\hat{p}_{\theta}$] (Ours)',...
-    '[inf$P_{\theta}$-$\hat{p}_{\theta}$, sup$P_{\theta}$-$\hat{p}_{\theta}$] (FastSLAM)', 'zero'}, 'Interpreter','latex', 'NumColumns', 2, 'FontSize', fontSize*0.7, 'Position', [0.25, 0.15, 0.5,0.1]);
+legend([hSet1, hFast1, hpt],{'[min$P_{\theta}$-$\hat{p}_{\theta}$, max$P_{\theta}$-$\hat{p}_{\theta}$] (Ours)',...
+    '[min$P_{\theta}$-$\hat{p}_{\theta}$, max$P_{\theta}$-$\hat{p}_{\theta}$] (FastSLAM)', 'zero'}, 'Interpreter','latex', 'NumColumns', 2, 'FontSize', fontSize*0.7, 'Position', [0.25, 0.15, 0.5,0.1]);
 
 ax  = axes(fig4,'visible','off');
 ax.YLabel.Visible   ='on';
-ylabel(ax, {'', '(sup/inf) $P_{\theta}$ - $\hat{p}_{\theta}$ [deg]', ''}, 'Interpreter','latex', 'FontSize', fontSize);
+ylabel(ax, {'', '(max/min) $P_{\theta}$ - $\hat{p}_{\theta}$ [deg]', ''}, 'Interpreter','latex', 'FontSize', fontSize);
 saveas(gcf,'ptSingleRun','epsc')
 
 %% Support functions
