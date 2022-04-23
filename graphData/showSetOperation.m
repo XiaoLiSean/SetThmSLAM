@@ -16,10 +16,10 @@ idx         = idxs(snapshoot_i) - mod(idxs(snapshoot_i), round(Historys{1}.pr.up
 % Plot Vehicle Body
 carPose     = Historys{idx}.p_car;
 carPose(3)  = rad2deg(Historys{idx}.p_car(3));      
-helperPlotVehicle(carPose', pr.carDims, 0, 'Color', 'blue', 'DisplayName', 'vehicle body $\hat{P}_{xy}$'); hold on;
+helperPlotVehicle(carPose', pr.carDims, 0, 'Color', 'blue', 'DisplayName', 'robot body $\hat{P}_{xy}$'); hold on;
 h1  = plot([Historys{idx}.pxy(1), Historys{idx}.pxy(1)+r*cos(Historys{idx}.pt)],...
         [Historys{idx}.pxy(2), Historys{idx}.pxy(2)+r*sin(Historys{idx}.pt)], 'r--', 'LineWidth', 3);
-set(h1,{'DisplayName'},{'vehicle orientation $\hat{p}_{\theta}$'})
+set(h1,{'DisplayName'},{'robot orientation $\hat{p}_{\theta}$'})
 % Plot Reconstructed Sets in SetSLAM
 t1  = Historys{idx}.SetSLAM.Pt.inf;
 t2  = Historys{idx}.SetSLAM.Pt.sup;

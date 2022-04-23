@@ -21,8 +21,8 @@ e_vrs           = linspace(0.1, 0.5, num);
 epsilon_Lts     = deg2rad(linspace(0.1, 10, num));
 epsilon_Lxys    = linspace(0.1, 0.5, num);
 epsilon_Ps      = linspace(0.1, 5, num);  
-e_steerings     = deg2rad(linspace(0.1, 10, num));
-e_velocitys     = linspace(0.05, 5, num);  
+e_steerings     = deg2rad(linspace(0.1, 2, num));
+e_velocitys     = linspace(0.05, 2, num);  
 e_mesh          = {e_vas, e_vrs, epsilon_Lts, epsilon_Lxys, epsilon_Ps, e_steerings, e_velocitys};  
 
 %% Simulation Main

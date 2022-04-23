@@ -13,7 +13,7 @@ enableCtrlSignal        = [true, true]; % enable pass control signal to propagat
 
 %% !!!note!!! the CtrlSignal set to true without Reconstruction would give error
 % =======================================================
-enableSetSLAM           = true;
+enableSetSLAM           = false;
 enableRBConstraints     = true; % [true/false] to enable rigid body constraint in set update
 % =======================================================
 enableFastSLAM          = true;
