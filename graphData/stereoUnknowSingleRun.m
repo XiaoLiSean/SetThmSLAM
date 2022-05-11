@@ -133,7 +133,7 @@ hpt     = plot(1:floor(timeSteps/initialDT), zeros(size(History.pt)), 'r-.', 'Li
 subplot(2,1,2);
 set(gca,'visible','off')
 legend([hSet1, hFast1, hSet2, hFast2, hpt],{'Ours', 'FastSLAM', '[min$P_{\theta}$-$\hat{p}_{\theta}$, max$P_{\theta}$-$\hat{p}_{\theta}$] (Ours)',...
-    '[min$P_{\theta}$-$\hat{p}_{\theta}$, max$P_{\theta}$-$\hat{p}_{\theta}$] (FastSLAM)', 'nominal orientation'}, 'Interpreter','latex', 'NumColumns', 1, 'FontSize', fontSize);
+    '[min$P_{\theta}$-$\hat{p}_{\theta}$, max$P_{\theta}$-$\hat{p}_{\theta}$] (FastSLAM)', 'actual orientation'}, 'Interpreter','latex', 'NumColumns', 1, 'FontSize', fontSize);
 
 
 %% Support functions

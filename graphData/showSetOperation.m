@@ -30,7 +30,7 @@ for i = 1:pr.n
     h3  = plot(Historys{idx}.p_hat{i}(1), Historys{idx}.p_hat{i}(2), 'r.', 'MarkerSize', 20);        
     if i == 1
         set(h2,{'DisplayName'},{'uncertainty set $P_{i}$ of $i^{th}$ marker'})
-        set(h3,{'DisplayName'},{'nominal position $\hat{p}_{i}$ of $i^{th}$ marker'})
+        set(h3,{'DisplayName'},{'actual position $\hat{p}_{i}$ of $i^{th}$ marker'})
     else
         h2.Annotation.LegendInformation.IconDisplayStyle = 'off';
         h3.Annotation.LegendInformation.IconDisplayStyle = 'off';
