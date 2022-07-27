@@ -245,7 +245,11 @@ classdef SetThmSLAM < matlab.mixin.Copyable
                 if u == 1
                     interval_CUP    = interval_CAP;
                 else
-                    interval_CUP    = or(interval_CUP, interval_CAP);
+                    if isempty(interval_CUP) == 0 && isempty(interval_CAP) == 0
+                        interval_CUP    = or(interval_CUP, interval_CAP);
+                    elseif isempty(interval_CUP) == 1 && isempty(interval_CAP) == 0
+                        interval_CUP    = interval_CAP;                        
+                    end
                 end
             end
             obj.Lxy{i}  = and(obj.Lxy{i}, interval_CUP);

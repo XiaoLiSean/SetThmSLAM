@@ -15,8 +15,8 @@ classdef markerKinematics < matlab.mixin.Copyable
         function p_kp1 = propagateMarker(obj, p_k, alpha, v, dt, theta_car)
             displacement    = v*dt*sqrt((obj.l_os*sin(alpha)/obj.wheelbase)^2+...
                 (cos(alpha))^2-obj.l_os*sin(obj.theta_os)*sin(2*alpha)/obj.wheelbase);
-            angleShift      = theta_car + obj.theta_os - pi/2 + v*dt*sin(alpha)/(2*obj.wheelbase)+...
-                atan2(obj.wheelbase*cos(obj.theta_os), (obj.wheelbase*sin(obj.theta_os)-obj.l_os*tan(alpha)));
+            angleShift      = theta_car + obj.theta_os + ...
+                atan2((obj.l_os*tan(alpha)-obj.wheelbase*sin(obj.theta_os)), obj.wheelbase*cos(obj.theta_os));
             
             p_kp1       = zeros(2,1);
             p_kp1(1)    = p_k(1) + displacement*cos(angleShift);
@@ -28,8 +28,8 @@ classdef markerKinematics < matlab.mixin.Copyable
             displacement    = v*dt*sqrt((obj.l_os*sin(alpha)/obj.wheelbase)^2+...
                 (cos(alpha))^2-obj.l_os*sin(obj.theta_os)*sin(2*alpha)/obj.wheelbase);
             interval_const  = interval(obj.wheelbase*cos(obj.theta_os), obj.wheelbase*cos(obj.theta_os));
-            angleShift      = Pt + obj.theta_os - pi/2 + v*dt*sin(alpha)/(2*obj.wheelbase)+...
-                intervalAtan2(interval_const, (obj.wheelbase*sin(obj.theta_os)-obj.l_os*tan(alpha)));
+            angleShift      = Pt + obj.theta_os + ...
+                intervalAtan2((obj.l_os*tan(alpha)-obj.wheelbase*sin(obj.theta_os)), interval_const);
 
             dX          = displacement*cos(angleShift);
             dY          = displacement*sin(angleShift);

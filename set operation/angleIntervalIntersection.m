@@ -33,7 +33,9 @@ function C = angleIntervalIntersection(A, B)
         C   = candidate1;
     end
     
-    if length(C) == 1
+    if isempty(C)
+        C   = interval();
+    elseif length(C) == 1
         C   = C{1};
     else
         C   = and(C{1}, C{2});
