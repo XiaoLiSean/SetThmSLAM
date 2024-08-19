@@ -3,11 +3,15 @@ Set theoretical localization and mapping: This project aims to robustly localize
 
 Please cite as:
 ```
-@article{li2021set,
-  title={Set-theoretic Localization for Mobile Robots with Infrastructure-based Sensing},
-  author={Li, Xiao and Li, Yutong and Girard, Anouck and Kolmanovsky, Ilya},
-  journal={arXiv preprint arXiv:2110.01749},
-  year={2021}
+@article{li2023set,
+  title={Set-theoretic localization for mobile robots with infrastructure-based sensing},
+  author={Li, Xiao and Li, Yutong and Li, Nan and Girard, Anouck and Kolmanovsky, Ilya},
+  journal={Advanced Control for Applications: Engineering and Industrial Systems},
+  volume={5},
+  number={1},
+  pages={e117},
+  year={2023},
+  publisher={Wiley Online Library}
 }
 ```
 
